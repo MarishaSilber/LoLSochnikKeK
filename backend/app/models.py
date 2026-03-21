@@ -49,3 +49,13 @@ class RequestHistory(Base):
     raw_text = Column(Text, nullable=False)
     parsed_json = Column(Text, nullable=True) 
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class OnboardingSession(Base):
+    __tablename__ = "onboarding_sessions"
+
+    id = Column(String, primary_key=True, index=True) # UUID сессии
+    chat_history = Column(Text, default="[]") # JSON список сообщений
+    is_completed = Column(Boolean, default=False)
+    extracted_data = Column(Text, nullable=True) # Промежуточный JSON профиля
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

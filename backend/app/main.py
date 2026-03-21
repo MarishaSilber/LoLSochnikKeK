@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from .database import engine
 from . import models
-from .routers import api
+from .routers import api, onboarding
 from .seed import seed
 
 # Создание таблиц и наполнение базы
@@ -12,6 +12,7 @@ app = FastAPI(title="LoLSochnikKeK API", version="1.0.0")
 
 # Подключаем роутеры
 app.include_router(api.router, prefix="/api/v1")
+app.include_router(onboarding.router, prefix="/api/v1/onboarding")
 
 
 @app.get("/")

@@ -23,7 +23,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg2://testuser:test1234@db:5432/testdb
-      OPENROUTER_API_KEY: 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
+      OPENROUTER_API_KEY: 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
     depends_on:
       db:
         condition: service_healthy

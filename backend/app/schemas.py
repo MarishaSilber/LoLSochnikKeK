@@ -43,3 +43,14 @@ class SearchQuery(BaseModel):
 class SearchResult(BaseModel):
     user: UserResponse
     score: float
+
+
+class ChatInput(BaseModel):
+    session_id: str
+    text: str
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    is_ready_to_confirm: bool = False
+    extracted_data: Optional[dict] = None
