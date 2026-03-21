@@ -1,6 +1,5 @@
 # LoLSochnikKeK
 
-Приложение для управления цитатами и пользователями.
 
 ## Структура проекта
 
@@ -10,10 +9,8 @@ LoLSochnikKeK/
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py          # входная точка (FastAPI)
-│   │   ├── models.py        # SQLAlchemy модели
 │   │   ├── schemas.py       # Pydantic схемы
 │   │   ├── database.py      # настройка БД, сессия
-│   │   ├── search.py        # логика умного поиска
 │   │   └── routers/         # эндпоинты
 │   ├── requirements.txt
 │   ├── Dockerfile
@@ -65,16 +62,8 @@ npm start
 
 ## API Endpoints
 
-- `GET /users/` - список пользователей
-- `POST /users/` - создание пользователя
-- `GET /users/{id}` - получение пользователя
-- `GET /quotes/` - список цитат
-- `POST /quotes/` - создание цитаты
-- `POST /search/` - умный поиск цитат
-- `GET /health` - проверка статуса
 
 ## Технологии
 
-- **Backend**: FastAPI, SQLAlchemy, PostgreSQL
 - **Frontend**: React, React Router
 - **Deployment**: Docker, Nginx
