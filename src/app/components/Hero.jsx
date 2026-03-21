@@ -1,11 +1,9 @@
 import { useState } from 'react';
 
-export default function Hero() {
-  const [search, setSearch] = useState('');
-
+export default function Hero({ searchQuery, setSearchQuery }) {
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log('Search:', search);
+    // Поиск обрабатывается в Home.jsx через useEffect
   };
 
   return (
@@ -16,8 +14,8 @@ export default function Hero() {
         <input
           type="text"
           placeholder="отчисление, Python, диплом..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
         <button type="submit" className="search-btn">Найти</button>
       </form>

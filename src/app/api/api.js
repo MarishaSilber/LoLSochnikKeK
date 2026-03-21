@@ -1,65 +1,67 @@
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'http://localhost:8000';
 
-// API для пользователей (из Maria_back-end)
+// API для пользователей
 export const usersApi = {
-  async createUser(userData) {
-    const response = await fetch(`${API_BASE_URL}/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    });
-    if (!response.ok) throw new Error('Failed to create user');
+  async getAllUsers() {
+    const response = await fetch(`${API_BASE_URL}/api/v1/users`);
+    if (!response.ok) throw new Error('Failed to get users');
     return response.json();
   },
 
   async getUser(id) {
-    const response = await fetch(`${API_BASE_URL}/users/${id}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/${id}`);
     if (!response.ok) throw new Error('Failed to get user');
     return response.json();
   },
 
-  async getAllUsers() {
-    const response = await fetch(`${API_BASE_URL}/users`);
-    if (!response.ok) throw new Error('Failed to get users');
+  async updateUser(id, userData) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    if (!response.ok) throw new Error('Failed to update user');
     return response.json();
   }
 };
 
-// API для обработки запросов (из Lev_back-end)
-export const queryApi = {
-  async processQuery(text) {
-    const response = await fetch(`${API_BASE_URL}/process-query`, {
+// API для поиска через LLM
+export const searchApi = {
+  async searchUsers(query) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/process-query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text: query })
     });
-    if (!response.ok) throw new Error('Failed to process query');
-    return response.json();
+    if (!response.ok) throw new Error('Failed to search');
+    const results = await response.json();
+    return results.map(r => r.user);
   }
 };
 
-// API для онбординга (из Lev_back-end)
+// API для онбординга (LLM регистрация)
 export const onboardingApi = {
-  async startOnboarding() {
-    const response = await fetch(`${API_BASE_URL}/onboarding/start`, {
-      method: 'POST'
+  async startSession() {
+    const response = await fetch(`${API_BASE_URL}/api/v1/onboarding/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
     });
     if (!response.ok) throw new Error('Failed to start onboarding');
     return response.json();
   },
 
-  async chat(sessionId, text) {
-    const response = await fetch(`${API_BASE_URL}/onboarding/chat`, {
+  async chat(sessionId, message) {
+    const response = await fetch(`${API_BASE_URL}/api/v1/onboarding/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId, text })
+      body: JSON.stringify({ session_id: sessionId, text: message })
     });
-    if (!response.ok) throw new Error('Failed to chat');
+    if (!response.ok) throw new Error('Failed to send message');
     return response.json();
   },
 
   async confirmProfile(sessionId) {
-    const response = await fetch(`${API_BASE_URL}/onboarding/confirm`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/onboarding/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId })
@@ -75,6 +77,3 @@ export async function healthCheck() {
   if (!response.ok) throw new Error('Backend is not available');
   return response.json();
 }
-
-// Примечание: Lev_back-end не имеет CRUD endpoints для пользователей
-// Используйте моковые данные или добавьте endpoints из Maria_back-end

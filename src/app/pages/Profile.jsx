@@ -1,84 +1,69 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { useNavigate, useParams } from 'react-router-dom';
 import { usersApi } from '../api/api';
+import './Profile.css';
 
 export default function Profile() {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { id } = useParams();
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
-        // Пробуем загрузить из localStorage
-        const storedUser = localStorage.getItem('currentUser');
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          if (parsed.id == id) {
-            // Загружаем актуальные данные с бэкенда
-            try {
-              const data = await usersApi.getUser(id);
-              setUser(data);
-            } catch (err) {
-              // Если бэкенд недоступен, используем localStorage
-              setUser(parsed);
-            }
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Если не в localStorage, загружаем с бэкенда
-        if (id) {
-          try {
-            const data = await usersApi.getUser(id);
-            setUser(data);
-          } catch (err) {
-            if (err.response?.status === 404) {
-              setError('Пользователь не найден');
-            } else {
-              setError('Не удалось загрузить профиль');
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load profile:', err);
-        setError('Не удалось загрузить профиль');
+        console.log('Loading profile:', id);
+        const userData = await usersApi.getUser(id);
+        console.log('User data:', userData);
+        
+        setProfile({
+          name: userData.full_name,
+          course: `${userData.course} курс`,
+          faculty: userData.department,
+          location: userData.location_name || 'Не указано',
+          hours: 'Пн–Пт, 13:00–18:00',
+          telegram: userData.telegram_username || '@не_указан',
+          stats: {
+            reviews: 0,
+            rating: userData.trust_score ? userData.trust_score.toFixed(1) : '5.0',
+            helped: 0,
+            responseTime: '~1ч',
+          },
+          bio: userData.bio_raw || 'Нет описания',
+          tags: userData.tags_array || [],
+        });
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
     };
-
-    loadProfile();
+    
+    if (id) {
+      loadProfile();
+    }
   }, [id]);
 
   if (loading) {
     return (
-      <div className="app">
-        <Navbar />
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#9a939e' }}>
-          Загрузка профиля...
+      <div className="profile-page">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          Загрузка...
         </div>
       </div>
     );
   }
 
-  if (error || !user) {
+  if (error || !profile) {
     return (
-      <div className="app">
-        <Navbar />
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#ac7674' }}>
-          <h2 style={{ fontSize: '20px', marginBottom: '1rem' }}>{error || 'Профиль не найден'}</h2>
-          <button
+      <div className="profile-page">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
+          <p>Профиль не найден</p>
+          <button 
             onClick={() => navigate('/')}
-            className="btn-s"
-            style={{ marginTop: '1rem' }}
+            style={{ padding: '10px 20px', background: '#4a3d5c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
           >
             На главную
           </button>
@@ -87,126 +72,145 @@ export default function Profile() {
     );
   }
 
-  const avatarLetters = (user.full_name || user.name || '?').split(' ').map(n => n[0]).join('').toUpperCase();
-  const avatarType = user.is_mentor ? 'olive' : (user.trust_score || 0) > 3 ? 'blush' : 'deep';
-  
-  // Форматируем дату последнего посещения
-  const formatLastActive = (dateString) => {
-    if (!dateString) return 'Неизвестно';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffMins < 1) return 'Только что';
-    if (diffMins < 60) return `${diffMins} мин. назад`;
-    if (diffHours < 24) return `${diffHours} ч. назад`;
-    if (diffDays < 7) return `${diffDays} дн. назад`;
-    return date.toLocaleDateString('ru-RU');
-  };
+  const TAGS = profile.tags || [];
 
   return (
-    <div className="app">
-      <Navbar />
-      <div style={{ maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' }}>
-        <div style={{ background: 'white', borderRadius: '10px', padding: '2rem', border: '1px solid #e8e3db' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div className={`avatar av-${avatarType}`} style={{ width: '60px', height: '60px', fontSize: '20px' }}>
-              {avatarLetters}
+    <div className="profile-page">
+      <nav className="navbar">
+        <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+          <div className="logo-box">V</div>
+          <div className="logo-text">
+            Vuz<span>Hub</span>
+          </div>
+        </div>
+        <div className="nav-right">
+          <button className="nav-back" onClick={() => navigate('/')}>
+            ← К поиску
+          </button>
+          <button className="nav-edit" onClick={() => navigate(`/edit-profile/${id}`)}>
+            Редактировать
+          </button>
+        </div>
+      </nav>
+
+      <div className="profile-band">
+        <div className="profile-top">
+          <div className="avatar-wrap">
+            <div className="avatar">
+              {profile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
             </div>
-            <div>
-              <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#4a3d5c' }}>
-                {user.full_name || user.name}
-              </h1>
-              <p style={{ fontSize: '14px', color: '#9a939e' }}>
-                {user.course} курс · {user.department || user.faculty || 'Не указано'}
-                {user.telegram_username && (
-                  <span style={{ marginLeft: '0.5rem' }}>
-                    · <a href={`https://t.me/${user.telegram_username.replace('@', '')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#4a3d5c' }}>
-                      {user.telegram_username}
-                    </a>
-                  </span>
-                )}
-              </p>
+          </div>
+          <div className="profile-meta">
+            <div className="profile-name">{profile.name}</div>
+            <div className="profile-sub">
+              <span>{profile.course}</span>
+              <div className="dot"></div>
+              <span>{profile.faculty}</span>
+              <div className="dot"></div>
+              <span>{profile.location}</span>
+            </div>
+          </div>
+          <div className="profile-actions">
+            <button className="btn-ghost">{profile.telegram}</button>
+            <button className="btn-primary" onClick={() => navigate(`/chat/${id}`)}>
+              Написать
+            </button>
+          </div>
+        </div>
+        <div className="tags-row">
+          {TAGS.map((tag, idx) => (
+            <span key={idx} className="ptag">
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="main">
+        <div className="left">
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">О себе</span>
+            </div>
+            <div className="card-body">
+              <p className="bio-text">{profile.bio}</p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: '24px', fontWeight: '600', color: '#4a3d5c' }}>
-                {(user.trust_score || 0).toFixed(1)}
-              </div>
-              <div style={{ fontSize: '11px', color: '#9a939e', textTransform: 'uppercase' }}>Рейтинг</div>
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Отзывы</span>
             </div>
-            <div>
-              <div style={{ fontSize: '24px', fontWeight: '600', color: '#4a3d5c' }}>
-                {user.helped_count || user.helped || 0}
+            <div className="card-body">
+              <div style={{ padding: '1rem', textAlign: 'center', color: '#9a939e' }}>
+                Пока нет отзывов
               </div>
-              <div style={{ fontSize: '11px', color: '#9a939e', textTransform: 'uppercase' }}>Помог</div>
             </div>
-            {user.is_mentor && (
-              <div>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: '#aeab82' }}>✓</div>
-                <div style={{ fontSize: '11px', color: '#9a939e', textTransform: 'uppercase' }}>Ментор</div>
+          </div>
+        </div>
+
+        <div className="right">
+          <div className="card">
+            <div className="stat-row">
+              <div className="stat-pill">
+                <div className="stat-num">{profile.stats.rating}</div>
+                <div className="stat-label">рейтинг</div>
               </div>
-            )}
-            <div>
-              <div style={{ fontSize: '11px', color: '#9a939e', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Был</div>
-              <div style={{ fontSize: '12px', color: '#6a6070' }}>
-                {formatLastActive(user.last_active)}
+              <div className="stat-pill">
+                <div className="stat-num">{profile.stats.helped}</div>
+                <div className="stat-label">помогла</div>
+              </div>
+              <div className="stat-pill">
+                <div className="stat-num">{profile.stats.responseTime}</div>
+                <div className="stat-label">ответ</div>
               </div>
             </div>
           </div>
 
-          {(user.bio_raw || user.bio) && (
-            <div style={{ marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#4a3d5c', marginBottom: '0.5rem', textTransform: 'uppercase' }}>О себе</h3>
-              <p style={{ fontSize: '14px', color: '#6a6070', lineHeight: '1.6' }}>
-                {user.bio_raw || user.bio}
-              </p>
-            </div>
-          )}
-
-          {(user.tags_array || user.tags || []).length > 0 && (
-            <div style={{ marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#4a3d5c', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Навыки</h3>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {(user.tags_array || user.tags || []).map((tag, i) => (
-                  <span key={i} className="ctag ctag-b">{tag}</span>
-                ))}
+          <div className="card">
+            <div className="card-body info-section">
+              <div className="info-row">
+                <div className="info-item">
+                  <div className="info-icon blush">📍</div>
+                  <div>
+                    <div className="info-label">Где найти</div>
+                    <div className="info-value">
+                      {profile.location}
+                      <br />
+                      <span className="info-sub">{profile.hours}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <div className="info-icon olive">✉️</div>
+                  <div>
+                    <div className="info-label">Telegram</div>
+                    <div className="info-value telegram">{profile.telegram}</div>
+                  </div>
+                </div>
+                <div className="info-item">
+                  <div className="info-icon lilac">🎓</div>
+                  <div>
+                    <div className="info-label">Факультет</div>
+                    <div className="info-value">
+                      {profile.faculty}
+                      <br />
+                      <span className="info-sub">{profile.course}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {user.location_name || user.location ? (
-            <div style={{ marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#4a3d5c', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Где найти</h3>
-              <p style={{ fontSize: '12px', color: '#9a939e' }}>
-                📍 {user.location_name || user.location}
-              </p>
+          <div className="card">
+            <div className="contact-block">
+              <button className="contact-btn" onClick={() => navigate(`/chat/${id}`)}>
+                Написать в чат
+              </button>
+              <button className="contact-btn-sec">Написать в Telegram</button>
+              <div className="contact-hint">Обычно отвечает в течение часа</div>
             </div>
-          ) : null}
-
-          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e8e3db' }}>
-            <button 
-              onClick={() => navigate(`/edit-profile/${id}`)}
-              className="btn-s"
-              style={{ marginRight: '0.5rem' }}
-            >
-              ✏️ Редактировать
-            </button>
-            <button 
-              onClick={() => {
-                localStorage.removeItem('currentUser');
-                navigate('/');
-              }}
-              className="btn-s"
-              style={{ background: '#ac7674' }}
-            >
-              Выйти
-            </button>
           </div>
         </div>
       </div>

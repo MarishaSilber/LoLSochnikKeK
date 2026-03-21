@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router-dom';
 import Home from './pages/Home';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
-import Search from './pages/Search';
 import Chat from './pages/Chat';
 import EditProfile from './pages/EditProfile';
 import NotFound from './pages/NotFound';
@@ -25,19 +24,11 @@ export const router = createBrowserRouter([
     element: <Profile />
   },
   {
-    path: '/search',
-    element: <Search />
-  },
-  {
-    path: '/chat',
+    path: '/chat/:userId',
     element: <Chat />
   },
   {
     path: '/edit-profile/:id',
-    element: <EditProfile />
-  },
-  {
-    path: '/edit-profile',
     element: <EditProfile />
   },
   {

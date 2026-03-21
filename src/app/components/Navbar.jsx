@@ -21,17 +21,15 @@ export default function Navbar() {
 
   return (
     <nav>
-      <div className="logo">
+      <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <img src={logo} alt="VuzHub Logo" className="logo-img" />
         Vuz<span>Hub</span>
       </div>
       <div className="nav-links">
-        <Link to="/" className="nav-link">Поиск</Link>
-        <button className="nav-link">О проекте</button>
         {currentUser ? (
           <>
             <Link to={`/profile/${currentUser.id}`} className="nav-cta">Профиль</Link>
-            <button onClick={handleLogout} className="nav-link" style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer' }}>Выйти</button>
+            <button onClick={handleLogout} className="nav-link logout">Выйти</button>
           </>
         ) : (
           <Link to="/register" className="nav-cta">Регистрация</Link>

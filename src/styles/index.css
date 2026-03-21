@@ -1,11 +1,38 @@
+@font-face {
+  font-family: 'TTW';
+  src: local('TT Wellingtons Light'), local('TTW-Light'), url('/fonts/TT-Wellingtons-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'TTW';
+  src: local('TT Wellingtons Regular'), local('TTW-Regular'), url('/fonts/TT-Wellingtons-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'TTW';
+  src: local('TT Wellingtons DemiBold'), local('TTW-DemiBold'), url('/fonts/TT-Wellingtons-DemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --deep: #4a3d5c;
+  --lilac-deep: #4a3d5c;
   --mid: #8a859c;
+  --lilac-mid: #6b5f7e;
   --blush: #ac7674;
+  --blush-light: #d4a8a6;
+  --blush-bg: rgba(172,118,116,0.1);
   --olive: #aeab82;
+  --olive-bg: rgba(174,171,130,0.15);
   --cream: #f5f2ec;
+  --cream-mid: #ede9e2;
   --border: #e8e3db;
   --text: #2a2028;
   --muted: #9a939e;
@@ -13,7 +40,7 @@
 }
 
 body {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-weight: 400;
   background: var(--cream);
   color: var(--text);
@@ -54,7 +81,7 @@ nav {
   gap: 4px;
 }
 .nav-link {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-size: 14px;
   font-weight: 400;
   color: var(--muted);
@@ -66,7 +93,7 @@ nav {
 }
 .nav-link:hover { color: var(--text); background: var(--cream); }
 .nav-cta {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-size: 14px;
   font-weight: 600;
   background: var(--deep);
@@ -106,7 +133,7 @@ nav {
 }
 .search-wrap {
   display: flex;
-  max-width: 500px;
+  max-width: 800px;
   margin: 0 auto;
   background: white;
   border-radius: 10px;
@@ -118,14 +145,14 @@ nav {
   border: none;
   outline: none;
   padding: 13px 16px;
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-size: 14px;
   color: var(--text);
   background: white;
 }
 .search-wrap input::placeholder { color: var(--muted); font-weight: 300; }
 .search-btn {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-weight: 600;
   font-size: 13px;
   background: var(--blush);
@@ -191,7 +218,7 @@ nav {
 }
 .filter-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .ftag {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-size: 12px;
   font-weight: 400;
   color: var(--muted);
@@ -219,7 +246,7 @@ nav {
 }
 .grid-count { font-size: 13px; font-weight: 300; color: var(--muted); }
 .sort-btn {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-size: 12px;
   color: var(--mid);
   background: white;
@@ -231,8 +258,9 @@ nav {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  align-items: start;
 }
 
 /* CARD */
@@ -279,13 +307,13 @@ nav {
 .card-loc { font-size: 11px; font-weight: 300; color: var(--muted); margin-bottom: 0.75rem; flex-shrink: 0; }
 .card-actions { display: flex; gap: 6px; margin-top: auto; flex-shrink: 0; }
 .btn-o {
-  flex: 1; font-family: 'TTWellingtons', sans-serif; font-size: 11px; font-weight: 400;
+  flex: 1; font-family: 'TTW', sans-serif; font-size: 11px; font-weight: 400;
   padding: 6px; border: 1px solid var(--border); border-radius: 6px;
   background: white; color: var(--deep); cursor: pointer; text-align: center;
 }
 .btn-o:hover { border-color: var(--deep); }
 .btn-s {
-  flex: 1; font-family: 'TTWellingtons', sans-serif; font-size: 11px; font-weight: 600;
+  flex: 1; font-family: 'TTW', sans-serif; font-size: 11px; font-weight: 600;
   padding: 6px; border: none; border-radius: 6px;
   background: var(--deep); color: white; cursor: pointer; text-align: center;
 }
@@ -300,7 +328,7 @@ nav {
   background: var(--cream);
 }
 .tab {
-  font-family: 'TTWellingtons', sans-serif;
+  font-family: 'TTW', sans-serif;
   font-size: 13px; font-weight: 400;
   padding: 5px 14px; border-radius: 6px;
   border: none; background: none;
