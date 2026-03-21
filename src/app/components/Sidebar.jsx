@@ -22,9 +22,9 @@ export default function Sidebar({ activeFilters, setActiveFilters }) {
         <span className="filter-label">Курс</span>
         <div className="filter-tags">
           {filters.courses.map(course => (
-            <span 
+            <span
               key={course}
-              className={`ftag ${course === '1' ? 'olive' : ''} ${isActive('courses', course) ? 'on' : ''}`}
+              className={`ftag olive ${isActive('courses', course) ? 'on' : ''}`}
               onClick={() => toggleFilter('courses', course)}
             >
               {course}
@@ -37,9 +37,9 @@ export default function Sidebar({ activeFilters, setActiveFilters }) {
         <span className="filter-label">Тема</span>
         <div className="filter-tags">
           {filters.topics.map(topic => (
-            <span 
+            <span
               key={topic}
-              className={`ftag ${topic === 'Отчисление' ? 'blush' : topic === 'Диплом' ? 'on' : ''} ${isActive('topics', topic) ? 'on' : ''}`}
+              className={`ftag blush ${isActive('topics', topic) ? 'on' : ''}`}
               onClick={() => toggleFilter('topics', topic)}
             >
               {topic}

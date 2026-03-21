@@ -17,6 +17,10 @@ export const router = createBrowserRouter([
     element: <Register />
   },
   {
+    path: '/profile/:id',
+    element: <Profile />
+  },
+  {
     path: '/profile',
     element: <Profile />
   },
@@ -27,6 +31,10 @@ export const router = createBrowserRouter([
   {
     path: '/chat',
     element: <Chat />
+  },
+  {
+    path: '/edit-profile/:id',
+    element: <EditProfile />
   },
   {
     path: '/edit-profile',

@@ -1,19 +1,24 @@
+import { students, filters } from '../data/students';
+
 export default function Stats() {
-  const stats = [
-    { num: '48', label: 'студентов' },
-    { num: '12', label: 'факультетов' },
-    { num: '130+', label: 'тем' },
-    { num: '4.9', label: 'рейтинг' }
-  ];
+  const studentCount = students.length;
+  const topicCount = filters.topics.length;
+  const helpedCount = 87;
 
   return (
     <div className="stats">
-      {stats.map((stat, index) => (
-        <div key={index} className="stat">
-          <div className="stat-num">{stat.num}</div>
-          <div className="stat-label">{stat.label}</div>
-        </div>
-      ))}
+      <div className="stat">
+        <div className="stat-num">{studentCount}</div>
+        <div className="stat-label">студентов</div>
+      </div>
+      <div className="stat">
+        <div className="stat-num">{topicCount}</div>
+        <div className="stat-label">тем</div>
+      </div>
+      <div className="stat">
+        <div className="stat-num">{helpedCount}</div>
+        <div className="stat-label">получили помощь</div>
+      </div>
     </div>
   );
 }

@@ -6,46 +6,31 @@ import Sidebar from '../components/Sidebar';
 import Tabs from '../components/Tabs';
 import StudentCard from '../components/StudentCard';
 import { queryApi, healthCheck } from '../api/api';
-import { students as mockStudents } from '../data/students';
+import { students as allStudents, categoryTopics } from '../data/students';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('Все');
   const [activeFilters, setActiveFilters] = useState({
-    courses: [],
-    topics: [],
+    courses: ['1'],
+    topics: ['Отчисление', 'Диплом'],
     places: []
   });
-  const [sortBy, setSortBy] = useState('rating');
-  const [students, setStudents] = useState(mockStudents);
+  const [sortBy, setSortBy] = useState('name');
+  const [students, setStudents] = useState(allStudents);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Поиск через API при изменении фильтров
+  // Поиск через API при изменении поискового запроса
   useEffect(() => {
     const search = async () => {
-      if (!searchQuery) {
-        setStudents(mockStudents);
+      if (!searchQuery.trim()) {
         return;
       }
 
       try {
         setLoading(true);
-        setError(null);
-        
-        // Проверка доступности бэкенда
-        try {
-          await healthCheck();
-        } catch (err) {
-          console.warn('Backend not available, using mock data');
-          setStudents(mockStudents);
-          setLoading(false);
-          return;
-        }
-
-        // Запрос через process-query API (из Lev_back-end)
+        await healthCheck();
         const results = await queryApi.processQuery(searchQuery);
-        // Конвертируем результаты в формат для карточек
         setStudents(results.map(r => ({
           id: r.user.id,
           name: r.user.full_name,
@@ -55,13 +40,10 @@ export default function Home() {
           tags: r.user.tags_array || [],
           location: r.user.location_name,
           avatar: r.user.full_name.split(' ').map(n => n[0]).join('').toUpperCase(),
-          avatarType: r.user.is_mentor ? 'olive' : 'deep',
-          score: r.score
+          avatarType: r.user.is_mentor ? 'olive' : 'deep'
         })));
       } catch (err) {
-        console.error('Search error:', err);
-        setError('Не удалось выполнить поиск');
-        setStudents(mockStudents);
+        console.warn('Backend search not available');
       } finally {
         setLoading(false);
       }
@@ -72,102 +54,103 @@ export default function Home() {
   }, [searchQuery]);
 
   const filteredStudents = useMemo(() => {
-    let result = [...students];
+    const categoryTags = categoryTopics[activeTab] || [];
     
-    // Filter by topics
-    if (activeFilters.topics?.length > 0) {
-      result = result.filter(student => {
-        const hasTopic = student.tags_array?.some(tag => 
-          activeFilters.topics.some(filter => 
+    let result = students.filter(student => {
+      // Filter by category tab
+      if (categoryTags.length > 0) {
+        const hasCategoryTag = student.tags.some(tag =>
+          categoryTags.includes(tag)
+        );
+        if (!hasCategoryTag) return false;
+      }
+      
+      // Filter by courses
+      if (activeFilters.courses?.length > 0) {
+        const hasCourse = activeFilters.courses.some(course => {
+          if (course === '4+') return student.course.startsWith('4') || student.course === '5 курс' || student.course === '6 курс';
+          if (course === 'Маг.') return String(student.course).includes('Маг') || String(student.course).includes('9') || String(student.course).includes('10');
+          return String(student.course).startsWith(course);
+        });
+        if (!hasCourse) return false;
+      }
+      
+      // Filter by topics
+      if (activeFilters.topics?.length > 0) {
+        const hasTopic = student.tags.some(tag =>
+          activeFilters.topics.some(filter =>
             tag.toLowerCase().includes(filter.toLowerCase())
           )
-        ) || student.bio_raw?.toLowerCase().includes(activeFilters.topics[0].toLowerCase());
-        return hasTopic;
-      });
-    }
-    
-    // Filter by tabs
-    if (activeTab !== 'Все') {
-      result = result.filter(student => {
-        if (activeTab === 'Академическая') return student.is_mentor;
-        if (activeTab === 'Психология') return student.bio_raw?.toLowerCase().includes('псих');
-        if (activeTab === 'Карьера') return student.bio_raw?.toLowerCase().includes('карьер');
-        if (activeTab === 'Документы') return student.bio_raw?.toLowerCase().includes('документ');
-        return true;
-      });
-    }
+        );
+        if (!hasTopic) return false;
+      }
+      
+      // Filter by places
+      if (activeFilters.places?.length > 0) {
+        const hasPlace = activeFilters.places.some(place =>
+          student.location.includes(place)
+        );
+        if (!hasPlace) return false;
+      }
+      return true;
+    });
     
     // Sort
-    if (sortBy === 'rating') {
-      result.sort((a, b) => (b.trust_score || 0) - (a.trust_score || 0));
-    } else {
-      result.sort((a, b) => a.full_name.localeCompare(b.full_name));
+    if (sortBy === 'name') {
+      result.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === 'course') {
+      const courseOrder = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 4, '6': 4, 'Маг': 5, 'Аспирантура': 6 };
+      result.sort((a, b) => {
+        const aMatch = String(a.course).match(/(\d+|Маг|Аспирантура)/);
+        const bMatch = String(b.course).match(/(\d+|Маг|Аспирантура)/);
+        const aOrder = aMatch ? courseOrder[aMatch[1]] || 99 : 99;
+        const bOrder = bMatch ? courseOrder[bMatch[1]] || 99 : 99;
+        return aOrder - bOrder;
+      });
     }
     
     return result;
-  }, [students, activeFilters, activeTab, sortBy]);
+  }, [activeFilters, activeTab, sortBy]);
 
   return (
     <div className="app">
       <Navbar />
       <Hero searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <Stats />
-
+      
       <div className="layout">
         <Sidebar activeFilters={activeFilters} setActiveFilters={setActiveFilters} />
-
+        
         <div className="grid-area">
           <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
+          
           <div style={{ height: '1rem' }}></div>
-
+          
           <div className="grid-top">
-            <span className="grid-count">
-              {loading ? 'Загрузка...' : `${filteredStudents.length} студентов`}
-            </span>
-            <button 
+            <span className="grid-count">{loading ? 'Загрузка...' : `${filteredStudents.length} студентов`}</span>
+            <button
               className="sort-btn"
-              onClick={() => setSortBy(sortBy === 'rating' ? 'name' : 'rating')}
+              onClick={() => setSortBy(sortBy === 'name' ? 'course' : 'name')}
             >
-              По {sortBy === 'rating' ? 'рейтингу' : 'имени'} {sortBy === 'rating' ? '↓' : '↑'}
+              По {sortBy === 'name' ? 'имени' : 'курсу'} {sortBy === 'name' ? '↑' : '↓'}
             </button>
           </div>
-
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#9a939e' }}>
-              Загрузка студентов...
-            </div>
-          )}
-
-          {error && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#ac7674' }}>
-              {error}
-              <button onClick={loadStudents} className="btn-s" style={{ marginTop: '1rem' }}>
-                Повторить
-              </button>
-            </div>
-          )}
-
-          {!loading && !error && (
-            <div className="cards">
-              {filteredStudents.map(student => (
-                <StudentCard 
-                  key={student.id} 
-                  student={{
-                    id: student.id || student.full_name,
-                    name: student.full_name || student.name,
-                    course: `${student.course || '1'} курс`,
-                    faculty: student.department || student.faculty,
-                    bio: student.bio_raw || student.bio,
-                    tags: student.tags_array || student.tags || [],
-                    location: student.location_name || student.location,
-                    avatar: (student.full_name || student.name || '?').split(' ').map(n => n[0]).join('').toUpperCase(),
-                    avatarType: student.is_mentor ? 'olive' : (student.trust_score || 0) > 3 ? 'blush' : 'deep'
-                  }} 
-                />
-              ))}
-            </div>
-          )}
+          
+          <div className="cards">
+            {filteredStudents.map(student => (
+              <StudentCard key={student.id} student={{
+                id: student.id,
+                name: student.name || student.full_name,
+                course: `${student.course || '1'} курс`,
+                faculty: student.faculty || student.department,
+                bio: student.bio || student.bio_raw,
+                tags: student.tags || student.tags_array || [],
+                location: student.location || student.location_name,
+                avatar: student.avatar || (student.full_name || student.name || '?').split(' ').map(n => n[0]).join('').toUpperCase(),
+                avatarType: student.avatarType || (student.is_mentor ? 'olive' : 'deep')
+              }} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

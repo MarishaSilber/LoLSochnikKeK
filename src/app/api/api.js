@@ -1,5 +1,30 @@
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
+// API для пользователей (из Maria_back-end)
+export const usersApi = {
+  async createUser(userData) {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    if (!response.ok) throw new Error('Failed to create user');
+    return response.json();
+  },
+
+  async getUser(id) {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`);
+    if (!response.ok) throw new Error('Failed to get user');
+    return response.json();
+  },
+
+  async getAllUsers() {
+    const response = await fetch(`${API_BASE_URL}/users`);
+    if (!response.ok) throw new Error('Failed to get users');
+    return response.json();
+  }
+};
+
 // API для обработки запросов (из Lev_back-end)
 export const queryApi = {
   async processQuery(text) {
