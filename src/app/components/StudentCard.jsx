@@ -1,10 +1,9 @@
 export default function StudentCard({ student }) {
   const getTagClass = (tag) => {
-    const tagLower = tag.toLowerCase();
-    if (['отчисление', 'академка', 'диплом', 'курсовая', 'права', 'разговор'].some(t => tagLower.includes(t))) {
+    if (['Отчисление', 'Диплом', 'Права', 'Разговор', 'Адаптация'].includes(tag)) {
       return 'ctag-b';
     }
-    if (['python', 'ml', 'статьи', 'документы'].some(t => tagLower.includes(t))) {
+    if (['Программирование', 'Статьи', 'Документы', 'Проектная практика'].includes(tag)) {
       return 'ctag-o';
     }
     return 'ctag-l';
