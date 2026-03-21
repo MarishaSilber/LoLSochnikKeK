@@ -58,5 +58,45 @@ curl -X POST http://localhost:8000/api/v1/process-query \
 - **AI Metrics:** tags_array, semantic_embedding (vector 1536)
 - **Social/System:** trust_score, last_active, search_vector (FTS)
 
+## 🤖 AI-Онбординг менторов
+
+Система автоматически проводит интервью с новым ментором через чат-бота на базе Gemini.
+
+### Как это работает
+
+1. **Создание сессии:** `POST /api/v1/onboarding/start` → возвращает `session_id`
+2. **Диалог с агентом:** `POST /api/v1/onboarding/chat` — дружелюбный AI-рекрутер задаёт вопросы
+3. **Извлечение данных:** В фоне работает Extractor, который парсит чат в JSON-профиль
+4. **Подтверждение:** Когда агент готов, он отправляет `[READY_TO_CONFIRM]` → `POST /api/v1/onboarding/confirm`
+
+### Пример диалога
+
+```bash
+# 1. Создаём сессию
+curl -X POST http://localhost:8000/api/v1/onboarding/start
+
+# 2. Отправляем сообщения в чат
+curl -X POST http://localhost:8000/api/v1/onboarding/chat \
+     -H "Content-Type: application/json" \
+     -d '{"session_id": "YOUR_SESSION_ID", "text": "Привет, меня зовут Иван, я на 3 курсе Физфака"}'
+
+# 3. После [READY_TO_CONFIRM] подтверждаем профиль
+curl -X POST "http://localhost:8000/api/v1/onboarding/confirm?session_id=YOUR_SESSION_ID"
+```
+
+### Что извлекает AI
+
+| Поле | Пример | Авто-теги |
+|------|--------|-----------|
+| full_name | Иван Петров | — |
+| course | 3 | — |
+| department | Физфак, квантовая физика | — |
+| location_name | ГЗ | ГЗ |
+| telegram_username | @ivan_phys | — |
+| bio_raw | "Помогу с матаном и квантами" | — |
+| tags_array | — | матан, Савченко, кванты, Python |
+
+**Бонус:** Новые менторы получают `trust_score = 5.0` за прохождение онбординга.
+
 ---
 *Разработано в рамках Хакатона 2026.*
