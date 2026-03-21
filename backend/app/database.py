@@ -9,6 +9,12 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(DATABASE_URL)
 
+# Активируем расширение pgvector
+from sqlalchemy import text
+with engine.connect() as conn:
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    conn.commit()
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
