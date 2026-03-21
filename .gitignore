@@ -1,11 +1,1 @@
-node_modules
-dist
 .DS_Store
-*.log
-.env
-__pycache__
-*.pyc
-postgres_data
-*.pid
-*.seed
-*.pid.lock
