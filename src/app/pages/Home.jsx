@@ -143,15 +143,15 @@ export default function Home() {
                 <StudentCard 
                   key={student.id} 
                   student={{
-                    id: student.id,
-                    name: student.full_name,
-                    course: `${student.course} курс`,
-                    faculty: student.department,
-                    bio: student.bio_raw,
-                    tags: student.tags_array || [],
-                    location: student.location_name,
-                    avatar: student.full_name.split(' ').map(n => n[0]).join('').toUpperCase(),
-                    avatarType: student.is_mentor ? 'olive' : student.trust_score > 3 ? 'blush' : 'deep'
+                    id: student.id || student.full_name,
+                    name: student.full_name || student.name,
+                    course: `${student.course || '1'} курс`,
+                    faculty: student.department || student.faculty,
+                    bio: student.bio_raw || student.bio,
+                    tags: student.tags_array || student.tags || [],
+                    location: student.location_name || student.location,
+                    avatar: (student.full_name || student.name || '?').split(' ').map(n => n[0]).join('').toUpperCase(),
+                    avatarType: student.is_mentor ? 'olive' : (student.trust_score || 0) > 3 ? 'blush' : 'deep'
                   }} 
                 />
               ))}
