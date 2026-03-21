@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
+    image: ankane/pgvector:v0.5.1 # Образ с поддержкой pgvector
     environment:
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: test1234
