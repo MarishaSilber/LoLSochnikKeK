@@ -1,52 +1,37 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, Index, func, SmallInteger
-from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
+import uuid
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, SmallInteger, Boolean, Float, DateTime, ARRAY, func
+from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
+from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from .database import Base
-import datetime
-
 
 class User(Base):
     __tablename__ = "users"
-
-    # Identity
-    id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String(100), nullable=False)
-    telegram_username = Column(String(50), nullable=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    full_name = Column(String(150), nullable=False, index=True)
+    telegram_username = Column(String(50), unique=True, index=True)
     photo_path = Column(String(255), nullable=True)
+    course = Column(SmallInteger, nullable=False, default=1)
+    department = Column(String(100), nullable=True, index=True)
+    is_mentor = Column(Boolean, default=False, server_default="false")
+    location_name = Column(String(100), nullable=True)
+    bio_raw = Column(Text, nullable=True)
+    tags_array = Column(ARRAY(String), nullable=True, default=[])
+    semantic_embedding = Column(Vector(1536), nullable=True)
+    trust_score = Column(Float, default=0.0, server_default="0.0")
+    last_active = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    search_vector = Column(TSVECTOR, nullable=True)
+    reviews_given = relationship("Review", foreign_keys="Review.reviewer_id", back_populates="reviewer")
+    reviews_received = relationship("Review", foreign_keys="Review.reviewed_id", back_populates="reviewed")
 
-    # Attributes
-    course = Column(SmallInteger, nullable=True) # 1-6. Вес: 2.0
-    department = Column(String(100), nullable=True) # Кафедра. Вес: 0.5
-    is_mentor = Column(Boolean, default=True) # Фильтр
-
-    # Location
-    location_name = Column(String(100), nullable=True) # Напр. "ГЗ", "5-18". Вес: 0.8
-    
-    # Content
-    bio_raw = Column(Text, nullable=True) # Сырое описание
-
-    # AI Metrics
-    tags_array = Column(ARRAY(String), nullable=True) # Вес: 1.5
-    semantic_embedding = Column(Vector(1536), nullable=True) # Вес: 1.0
-    
-    # Social & System
-    trust_score = Column(Float, default=0.0) # Карма. Вес: 0.3
-    last_active = Column(DateTime, default=datetime.datetime.utcnow) # Вес: 0.4
-    
-    # Search
-    search_vector = Column(TSVECTOR, nullable=True) # Postgres FTS
-
-    __table_args__ = (
-        Index("ix_users_tags", "tags_array", postgresql_using="gin"),
-        Index("ix_users_search_vector", "search_vector", postgresql_using="gin"),
-        Index("ix_users_embedding", "semantic_embedding", postgresql_using="hnsw", postgresql_with={"m": 16, "ef_construction": 64}),
-    )
-
-
-class RequestHistory(Base):
-    __tablename__ = "request_history"
-
-    id = Column(Integer, primary_key=True, index=True)
-    raw_text = Column(Text, nullable=False)
-    parsed_json = Column(Text, nullable=True) 
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+class Review(Base):
+    __tablename__ = "reviews"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reviewed_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    score = Column(Float, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    reviewer = relationship("User", foreign_keys=[reviewer_id], back_populates="reviews_given")
+    reviewed = relationship("User", foreign_keys=[reviewed_id], back_populates="reviews_received")

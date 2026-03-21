@@ -1,69 +1,32 @@
 # LoLSochnikKeK
 
+Приложение для умного поиска сокурсников/менторов с использованием AI.
 
-## РЎС‚СЂСѓРєС‚СѓСЂР° РїСЂРѕРµРєС‚Р°
+## Схема БД (Users)
 
-```
-LoLSochnikKeK/
-в”њв”Ђв”Ђ backend/
-в”‚   в”њв”Ђв”Ђ app/
-в”‚   в”‚   в”њв”Ђв”Ђ __init__.py
-в”‚   в”‚   в”њв”Ђв”Ђ main.py          # РІС…РѕРґРЅР°СЏ С‚РѕС‡РєР° (FastAPI)
-в”‚   в”‚   в”њв”Ђв”Ђ schemas.py       # Pydantic СЃС…РµРјС‹
-в”‚   в”‚   в”њв”Ђв”Ђ database.py      # РЅР°СЃС‚СЂРѕР№РєР° Р‘Р”, СЃРµСЃСЃРёСЏ
-в”‚   в”‚   в””в”Ђв”Ђ routers/         # СЌРЅРґРїРѕРёРЅС‚С‹
-в”‚   в”њв”Ђв”Ђ requirements.txt
-в”‚   в”њв”Ђв”Ђ Dockerfile
-в”‚   в””в”Ђв”Ђ .env
-в”њв”Ђв”Ђ frontend/
-в”‚   в”њв”Ђв”Ђ public/
-в”‚   в”њв”Ђв”Ђ src/
-в”‚   в”‚   в”њв”Ђв”Ђ components/
-в”‚   в”‚   в”њв”Ђв”Ђ pages/
-в”‚   в”‚   в”њв”Ђв”Ђ App.js
-в”‚   в”‚   в””в”Ђв”Ђ index.js
-в”‚   в”њв”Ђв”Ђ package.json
-в”‚   в”њв”Ђв”Ђ Dockerfile
-в”‚   в””в”Ђв”Ђ nginx.conf
-в”њв”Ђв”Ђ docker-compose.yml
-в””в”Ђв”Ђ README.md
-```
+| Группа | Поле | Тип | Описание | Вес |
+|--------|------|-----|----------|-----|
+| Identity | id | UUID | Уникальный ключ | — |
+| | full_name | String | ФИО | — |
+| | telegram_username | String | Telegram контакт | — |
+| | photo_path | String | Путь к фото | — |
+| Attributes | course | SmallInt | Курс (1-6) | 2.0 |
+| | department | String | Кафедра | 0.5 |
+| | is_mentor | Boolean | Статус ментора | фильтр |
+| Location | location_name | String | Локация | 0.8 |
+| Content | bio_raw | Text | Описание | — |
+| AI Metrics | tags_array | ARRAY | Теги | 1.5 |
+| | semantic_embedding | Vector(1536) | Вектор | 1.0 |
+| Social | trust_score | Float | Рейтинг | 0.3 |
+| System | last_active | DateTime | Последний вход | 0.4 |
+| Search | search_vector | TSVECTOR | FTS индекс | — |
 
-## Р‘С‹СЃС‚СЂС‹Р№ СЃС‚Р°СЂС‚
+## Запуск
 
-### Р—Р°РїСѓСЃРє С‡РµСЂРµР· Docker Compose
-
-```bash
+`ash
 docker-compose up --build
-```
+`
 
-РџРѕСЃР»Рµ Р·Р°РїСѓСЃРєР°:
-- **Frontend**: http://localhost
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-
-### Р›РѕРєР°Р»СЊРЅР°СЏ СЂР°Р·СЂР°Р±РѕС‚РєР°
-
-#### Backend
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-#### Frontend
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-## API Endpoints
-
-
-## РўРµС…РЅРѕР»РѕРіРёРё
-
-- **Frontend**: React, React Router
-- **Deployment**: Docker, Nginx
+- Frontend: http://localhost
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
