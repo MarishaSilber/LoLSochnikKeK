@@ -1,11 +1,13 @@
 import { useState } from 'react';
 
-export default function Hero() {
-  const [search, setSearch] = useState('');
+export default function Hero({ searchQuery, setSearchQuery }) {
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    console.log('Search:', search);
+    setIsSearching(true);
+    // Поиск срабатывает через useEffect в Home.jsx
+    setTimeout(() => setIsSearching(false), 500);
   };
 
   return (
@@ -16,10 +18,13 @@ export default function Hero() {
         <input 
           type="text" 
           placeholder="отчисление, Python, диплом..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          disabled={isSearching}
         />
-        <button type="submit" className="search-btn">Найти</button>
+        <button type="submit" className="search-btn" disabled={isSearching}>
+          {isSearching ? 'Поиск...' : 'Найти'}
+        </button>
       </form>
     </div>
   );

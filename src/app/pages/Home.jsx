@@ -5,7 +5,8 @@ import Stats from '../components/Stats';
 import Sidebar from '../components/Sidebar';
 import Tabs from '../components/Tabs';
 import StudentCard from '../components/StudentCard';
-import { usersApi, healthCheck } from '../api/api';
+import { queryApi, healthCheck } from '../api/api';
+import { students as mockStudents } from '../data/students';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('Все');
@@ -15,50 +16,60 @@ export default function Home() {
     places: []
   });
   const [sortBy, setSortBy] = useState('rating');
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState(mockStudents);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Загрузка студентов из API
+  // Поиск через API при изменении фильтров
   useEffect(() => {
-    loadStudents();
-  }, [activeFilters, activeTab]);
-
-  const loadStudents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Проверка доступности бэкенда
-      try {
-        await healthCheck();
-      } catch (err) {
-        console.warn('Backend not available, using mock data');
-        // Используем моковые данные если бэкенд недоступен
-        const mockData = await import('../data/students');
-        setStudents(mockData.students);
-        setLoading(false);
+    const search = async () => {
+      if (!searchQuery) {
+        setStudents(mockStudents);
         return;
       }
 
-      // Загрузка из API
-      const params = {};
-      if (activeFilters.courses?.length > 0) {
-        params.course = parseInt(activeFilters.courses[0]);
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Проверка доступности бэкенда
+        try {
+          await healthCheck();
+        } catch (err) {
+          console.warn('Backend not available, using mock data');
+          setStudents(mockStudents);
+          setLoading(false);
+          return;
+        }
+
+        // Запрос через process-query API (из Lev_back-end)
+        const results = await queryApi.processQuery(searchQuery);
+        // Конвертируем результаты в формат для карточек
+        setStudents(results.map(r => ({
+          id: r.user.id,
+          name: r.user.full_name,
+          course: `${r.user.course} курс`,
+          faculty: r.user.department,
+          bio: r.user.bio_raw,
+          tags: r.user.tags_array || [],
+          location: r.user.location_name,
+          avatar: r.user.full_name.split(' ').map(n => n[0]).join('').toUpperCase(),
+          avatarType: r.user.is_mentor ? 'olive' : 'deep',
+          score: r.score
+        })));
+      } catch (err) {
+        console.error('Search error:', err);
+        setError('Не удалось выполнить поиск');
+        setStudents(mockStudents);
+      } finally {
+        setLoading(false);
       }
-      if (activeFilters.places?.length > 0) {
-        params.department = activeFilters.places[0];
-      }
-      
-      const data = await usersApi.getUsers(params);
-      setStudents(data);
-    } catch (err) {
-      console.error('Failed to load students:', err);
-      setError('Не удалось загрузить данные');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    const timer = setTimeout(search, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const filteredStudents = useMemo(() => {
     let result = [...students];
@@ -99,7 +110,7 @@ export default function Home() {
   return (
     <div className="app">
       <Navbar />
-      <Hero />
+      <Hero searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <Stats />
 
       <div className="layout">
