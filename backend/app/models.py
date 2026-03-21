@@ -27,7 +27,7 @@ class User(Base):
 
     # AI Metrics
     tags_array = Column(ARRAY(String), nullable=True) # Вес: 1.5
-    semantic_embedding = Column(Vector(1536), nullable=True) # Вес: 1.0 (OpenAI)
+    semantic_embedding = Column(Vector(1536), nullable=True) # Вес: 1.0
     
     # Social & System
     trust_score = Column(Float, default=0.0) # Карма. Вес: 0.3
@@ -36,11 +36,9 @@ class User(Base):
     # Search
     search_vector = Column(TSVECTOR, nullable=True) # Postgres FTS
 
-    # Индексы для ускорения
     __table_args__ = (
         Index("ix_users_tags", "tags_array", postgresql_using="gin"),
         Index("ix_users_search_vector", "search_vector", postgresql_using="gin"),
-        # Индекс для векторного поиска (HNSW для скорости)
         Index("ix_users_embedding", "semantic_embedding", postgresql_using="hnsw", postgresql_with={"m": 16, "ef_construction": 64}),
     )
 
@@ -50,5 +48,5 @@ class RequestHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     raw_text = Column(Text, nullable=False)
-    parsed_json = Column(Text, nullable=True) # Результат работы LLM
+    parsed_json = Column(Text, nullable=True) 
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
