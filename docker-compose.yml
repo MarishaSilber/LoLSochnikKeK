@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: ankane/pgvector:v0.5.1 # Образ с поддержкой pgvector
+    image: ankane/pgvector:v0.5.1
     environment:
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: test1234
@@ -11,6 +11,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d testdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
@@ -18,8 +23,10 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+psycopg2://testuser:test1234@db:5432/testdb
+      OPENROUTER_API_KEY: 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
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

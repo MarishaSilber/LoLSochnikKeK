@@ -39,7 +39,6 @@ class User(Base):
     __table_args__ = (
         Index("ix_users_tags", "tags_array", postgresql_using="gin"),
         Index("ix_users_search_vector", "search_vector", postgresql_using="gin"),
-        Index("ix_users_embedding", "semantic_embedding", postgresql_using="hnsw", postgresql_with={"m": 16, "ef_construction": 64}),
     )
 
 

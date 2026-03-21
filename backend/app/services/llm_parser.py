@@ -36,7 +36,7 @@ SYSTEM_PROMPT = """> Role: Ты — Backend-парсер для студенче
 async def parse_student_request(raw_text: str) -> Optional[ParsedRequest]:
     try:
         response = await client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct", # Или любая другая модель из OpenRouter
+            model="google/gemini-2.5-flash-lite",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": raw_text}
