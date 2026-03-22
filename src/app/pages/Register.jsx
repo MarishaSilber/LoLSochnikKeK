@@ -113,11 +113,6 @@ export default function Register() {
     }
     try {
       const userData = await onboardingApi.confirmProfile(sessionId);
-      localStorage.setItem('currentUser', JSON.stringify({
-        id: userData.id,
-        name: userData.full_name,
-        telegram: userData.telegram_username
-      }));
       window.location.href = `/profile/${userData.id}`;
     } catch (error) {
       console.error('Error confirming profile:', error);
