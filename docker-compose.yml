@@ -22,7 +22,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/.env # Бэкенд будет брать ключ отсюда
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
@@ -38,7 +38,6 @@ services:
       - backend
     volumes:
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./DockerCompose/index.html:/usr/share/nginx/html/index.html
 
 volumes:
   postgres_data:
