@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onboardingApi } from '../api/api';
 import './Register.css';
+import logo from '../../assets/sochnik.png';
 
 const STEPS = [
   { title: 'Знакомство', desc: 'Имя и факультет' },
@@ -134,7 +135,7 @@ export default function Register() {
     <div className="register-page">
       <nav className="navbar">
         <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <div className="logo-box">V</div>
+          <img src={logo} alt="VuzHub Logo" className="logo-img" />
           <div className="logo-text">
             Vuz<span>Hub</span>
           </div>
