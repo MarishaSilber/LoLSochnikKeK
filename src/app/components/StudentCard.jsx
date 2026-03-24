@@ -1,4 +1,8 @@
+import { useNavigate } from 'react-router-dom';
+
 export default function StudentCard({ student }) {
+  const navigate = useNavigate();
+
   const getTagClass = (tag) => {
     if (['Отчисление', 'Диплом', 'Права', 'Разговор', 'Адаптация'].includes(tag)) {
       return 'ctag-b';
@@ -26,8 +30,8 @@ export default function StudentCard({ student }) {
       </div>
       <div className="card-loc">{student.location}</div>
       <div className="card-actions">
-        <button className="btn-o" onClick={() => console.log('Profile:', student.id)}>Профиль</button>
-        <button className="btn-s" onClick={() => console.log('Message:', student.id)}>Написать</button>
+        <button className="btn-o" onClick={() => navigate(`/profile/${student.id}`)}>Профиль</button>
+        <button className="btn-s" onClick={() => navigate(`/chat?user=${student.id}`)}>Написать</button>
       </div>
     </div>
   );

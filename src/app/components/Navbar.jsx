@@ -23,7 +23,7 @@ export default function Navbar() {
     <nav>
       <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <img src={logo} alt="VuzHub Logo" className="logo-img" />
-        Vuz<span>Hub</span>
+        <span className="vuz">Vuz</span><span>Hub</span>
       </div>
       <div className="nav-links">
         {currentUser ? (

@@ -7,8 +7,16 @@ export default function Profile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('currentUser');
+    if (stored) {
+      setCurrentUser(JSON.parse(stored));
+    }
+  }, []);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -16,7 +24,7 @@ export default function Profile() {
         console.log('Loading profile:', id);
         const userData = await usersApi.getUser(id);
         console.log('User data:', userData);
-        
+
         setProfile({
           name: userData.full_name,
           course: `${userData.course} курс`,
@@ -40,11 +48,13 @@ export default function Profile() {
         setLoading(false);
       }
     };
-    
+
     if (id) {
       loadProfile();
     }
   }, [id]);
+
+  const isOwner = currentUser && profile && String(currentUser.id) === String(id);
 
   if (loading) {
     return (
@@ -87,9 +97,11 @@ export default function Profile() {
           <button className="nav-back" onClick={() => navigate('/')}>
             ← К поиску
           </button>
-          <button className="nav-edit" onClick={() => navigate(`/edit-profile/${id}`)}>
-            Редактировать
-          </button>
+          {isOwner && (
+            <button className="nav-edit" onClick={() => navigate(`/edit-profile/${id}`)}>
+              Редактировать
+            </button>
+          )}
         </div>
       </nav>
 
@@ -154,7 +166,7 @@ export default function Profile() {
             <div className="stat-row">
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.rating}</div>
-                <div className="stat-label">рейтинг</div>
+                <div className="stat-label">совместимость</div>
               </div>
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.helped}</div>
