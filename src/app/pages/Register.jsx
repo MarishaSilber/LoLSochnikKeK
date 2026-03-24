@@ -136,9 +136,7 @@ export default function Register() {
       <nav className="navbar">
         <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <img src={logo} alt="VuzHub Logo" className="logo-img" />
-          <div className="logo-text">
-            Vuz<span>Hub</span>
-          </div>
+          Vuz<span>Hub</span>
         </div>
         <div className="nav-right">
           <button className="nav-back" onClick={handleGoToSearch}>

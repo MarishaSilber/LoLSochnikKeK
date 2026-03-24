@@ -21,29 +21,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.logo-box {
-  width: 28px;
-  height: 28px;
-  background: var(--blush);
-  border-radius: 7px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 14px;
-  color: white;
-}
-
-.logo-text {
   font-weight: 600;
   font-size: 17px;
-  color: #f5f2ec;
+  color: #ffffff !important;
+  cursor: pointer;
 }
 
-.logo-text span {
-  color: var(--blush-light);
+.logo img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.logo span {
+  color: var(--blush) !important;
 }
 
 .nav-right {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usersApi } from '../api/api';
 import './Profile.css';
+import logo from '../../assets/sochnik.png';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -88,10 +89,8 @@ export default function Profile() {
     <div className="profile-page">
       <nav className="navbar">
         <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-          <div className="logo-box">V</div>
-          <div className="logo-text">
-            Vuz<span>Hub</span>
-          </div>
+          <img src={logo} alt="VuzHub Logo" className="logo-img" />
+          Vuz<span>Hub</span>
         </div>
         <div className="nav-right">
           <button className="nav-back" onClick={() => navigate('/')}>
