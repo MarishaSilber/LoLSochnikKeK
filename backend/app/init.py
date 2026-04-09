@@ -1,2 +1,0 @@
-# LoLSochnikKeK Backend
-
