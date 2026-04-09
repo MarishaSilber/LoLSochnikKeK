@@ -1,0 +1,59 @@
+services:
+  db:
+    image: ankane/pgvector:v0.5.1
+    container_name: vuzhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vuzhub_user
+      POSTGRES_PASSWORD: vuzhub_pass123
+      POSTGRES_DB: vuzhub_db
+    volumes:
+      - vuzhub_postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vuzhub_user -d vuzhub_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vuzhub-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://vuzhub_user:vuzhub_pass123@db:5432/vuzhub_db
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: /
+    container_name: vuzhub-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+    networks:
+      - default
+      - reverse_proxy
+
+volumes:
+  vuzhub_postgres_data:
+
+networks:
+  reverse_proxy:
+    external: true
+    name: ${REVERSE_PROXY_NETWORK}

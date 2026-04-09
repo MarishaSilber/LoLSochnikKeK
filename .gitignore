@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+# IDE
+.idea/
+.vscode/
+*.swp
+# Environment
+.env
+backend/.env
+*.env.local
+*.env.production
+*.env.development
+# Node
+node_modules/
+dist/
+# OS
+.DS_Store
+Thumbs.db
+backups/
+*.dump
