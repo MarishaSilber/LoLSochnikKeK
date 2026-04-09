@@ -1,6 +1,6 @@
 # VuzHub
 
-Студенческая платформа для МИФИ: профили, поиск, чаты, AI-онбординг, админка и support-чат.
+VuzHub — студенческая платформа для МИФИ: профили, поиск, чаты, AI-онбординг, админка и support-чат.
 
 ## Локальный запуск
 
@@ -18,12 +18,59 @@ docker compose up -d
 
 ## Production на VPS
 
-Для выкладки за уже существующим reverse proxy используй:
+Для production используй:
 
-- [`docker-compose.prod.yml`](/C:/Users/JDubo/PycharmProjects/LoLSochnikKeK/docker-compose.prod.yml)
-- [`deploy/DEPLOY_VPS.md`](/C:/Users/JDubo/PycharmProjects/LoLSochnikKeK/deploy/DEPLOY_VPS.md)
-- [`backend/.env.example`](/C:/Users/JDubo/PycharmProjects/LoLSochnikKeK/backend/.env.example)
-- [`deploy/nginx/vuzhub.external.conf.example`](/C:/Users/JDubo/PycharmProjects/LoLSochnikKeK/deploy/nginx/vuzhub.external.conf.example)
+- [docker-compose.prod.yml](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\docker-compose.prod.yml)
+- [deploy/DEPLOY_VPS.md](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\deploy\DEPLOY_VPS.md)
+- [deploy/update-vps.sh](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\deploy\update-vps.sh)
+- [deploy/backup-db.sh](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\deploy\backup-db.sh)
+- [deploy/setup-backup-cron.sh](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\deploy\setup-backup-cron.sh)
+- [deploy/SECRETS_ROTATION.md](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\deploy\SECRETS_ROTATION.md)
+- [backend/.env.example](C:\Users\JDubo\PycharmProjects\LoLSochnikKeK\backend\.env.example)
+
+## Обновление на VPS
+
+```bash
+cd /opt/vuzhub
+./deploy/update-vps.sh
+```
+
+Если нужна конкретная ветка:
+
+```bash
+cd /opt/vuzhub
+./deploy/update-vps.sh Evgeniy_back-end
+```
+
+## Бэкап базы
+
+Разовый бэкап:
+
+```bash
+cd /opt/vuzhub
+./deploy/backup-db.sh
+```
+
+Восстановление:
+
+```bash
+cd /opt/vuzhub
+./deploy/restore-db.sh /opt/vuzhub/backups/имя-файла.dump
+```
+
+Установка ежедневного бэкапа в `03:00`:
+
+```bash
+cd /opt/vuzhub
+./deploy/setup-backup-cron.sh
+```
+
+Другой cron-график:
+
+```bash
+cd /opt/vuzhub
+./deploy/setup-backup-cron.sh "0 */6 * * *"
+```
 
 ## Основные возможности
 

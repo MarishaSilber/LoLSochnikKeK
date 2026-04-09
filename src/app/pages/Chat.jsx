@@ -58,10 +58,12 @@ export default function Chat() {
   const [error, setError] = useState('');
   const resolvedDirectRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const suppressAutoSelectRef = useRef(false);
 
   const selectedConversationId = searchParams.get('conversation');
   const targetUserId = searchParams.get('targetUser') || (!selectedConversationId ? routeUserId || '' : '');
   const isAdmin = Boolean(currentUser?.isAdmin);
+  const hasSelectedConversation = Boolean(selectedConversationId || activeConversation);
   const activeConversationTitle = activeConversation?.title || 'Чаты';
 
   const refreshConversationList = async (archivedOnly = archivedView) => {
@@ -71,6 +73,7 @@ export default function Chat() {
   };
 
   const openConversation = (conversationId, options = {}) => {
+    suppressAutoSelectRef.current = false;
     const nextParams = {
       conversation: conversationId,
       tab: isAdmin && archivedView ? 'archived' : '',
@@ -79,6 +82,7 @@ export default function Chat() {
   };
 
   const clearConversationSelection = (options = {}) => {
+    suppressAutoSelectRef.current = true;
     const nextParams = {
       tab: isAdmin && archivedView ? 'archived' : '',
     };
@@ -179,7 +183,7 @@ export default function Chat() {
                 setActiveConversation(null);
               }
             }
-          } else if (data.length > 0) {
+          } else if (data.length > 0 && !suppressAutoSelectRef.current) {
             openConversation(data[0].id, { replace: true });
           } else {
             setActiveConversation(null);
@@ -317,8 +321,8 @@ export default function Chat() {
   return (
     <div className="app">
       <Navbar />
-      <div className="chat-layout">
-        <aside className="chat-sidebar">
+      <div className={`chat-layout ${hasSelectedConversation ? 'chat-layout-conversation-open' : ''}`}>
+        <aside className={`chat-sidebar ${hasSelectedConversation ? 'chat-sidebar-hidden-mobile' : ''}`}>
           <div className="chat-sidebar-top">
             <div>
               <h2 className="chat-sidebar-title">Чаты</h2>
@@ -378,9 +382,19 @@ export default function Chat() {
           </div>
         </aside>
 
-        <main className="chat-main">
+        <main className={`chat-main ${hasSelectedConversation ? 'chat-main-visible-mobile' : 'chat-main-hidden-mobile'}`}>
           <div className="chat-header-bar">
             <div>
+              <button
+                type="button"
+                className="chat-mobile-back"
+                onClick={() => {
+                  setActiveConversation(null);
+                  clearConversationSelection();
+                }}
+              >
+                ← К чатам
+              </button>
               <div className="chat-header-name">{activeConversationTitle}</div>
               <div className="chat-header-subtitle">
                 {activeConversation?.kind === 'support' ? 'Чат с техподдержкой' : 'Личный диалог'}
