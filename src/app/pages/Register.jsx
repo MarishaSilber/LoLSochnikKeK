@@ -1,19 +1,189 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { onboardingApi } from '../api/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { authApi, onboardingApi } from '../api/api';
 import './Register.css';
 import logo from '../../assets/sochnik.png';
+import { getCurrentUser, setAccessToken, setCurrentUser } from '../utils/session';
+import SiteFooter from '../components/SiteFooter';
 
 const STEPS = [
-  { title: 'Знакомство', desc: 'Имя и факультет' },
+  { title: 'Знакомство', desc: 'Имя и курс' },
+  { title: 'Направление', desc: 'Кафедра или факультет' },
   { title: 'Чем помогаешь', desc: 'Темы, опыт, компетенции' },
-  { title: 'Где найти', desc: 'Локация на факультете' },
-  { title: 'Контакты', desc: 'Telegram или email' },
+  { title: 'Где найти', desc: 'Локация на кампусе' },
   { title: 'Готово', desc: 'Публикация профиля' },
 ];
 
-export default function Register() {
+function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacyPolicy, setAcceptedPrivacyPolicy] = useState(false);
+
+  const isRegisterMode = mode === 'register';
+  const submitLabel = isRegisterMode ? 'Создать аккаунт' : 'Войти';
+  const title = isRegisterMode ? 'Создание аккаунта' : 'Вход в аккаунт';
+  const subtitle = isRegisterMode
+    ? 'Сначала создаём аккаунт, потом AI помогает собрать профиль.'
+    : 'Войди в существующий аккаунт и продолжи регистрацию или открой профиль.';
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (isRegisterMode && password !== confirmPassword) {
+      return onSubmit({ localError: 'Пароли не совпадают.' });
+    }
+
+    if (isRegisterMode && (!acceptedTerms || !acceptedPrivacyPolicy)) {
+      return onSubmit({
+        localError: 'Нужно принять пользовательское соглашение и политику конфиденциальности.',
+      });
+    }
+
+    await onSubmit({
+      email,
+      password,
+      confirmPassword,
+      acceptedTerms,
+      acceptedPrivacyPolicy,
+    });
+  };
+
+  return (
+    <div className="register-auth-shell">
+      <div className="register-auth-card">
+        <div className="register-auth-kicker">Аккаунт</div>
+        <h1 className="register-auth-title">{title}</h1>
+        <p className="register-auth-subtitle">{subtitle}</p>
+
+        <div className="register-auth-tabs">
+          <button
+            type="button"
+            className={`register-auth-tab ${isRegisterMode ? 'active' : ''}`}
+            onClick={() => onSwitchMode('register')}
+          >
+            Регистрация
+          </button>
+          <button
+            type="button"
+            className={`register-auth-tab ${!isRegisterMode ? 'active' : ''}`}
+            onClick={() => onSwitchMode('login')}
+          >
+            Вход
+          </button>
+        </div>
+
+        <form className="register-auth-form" onSubmit={handleSubmit}>
+          <label className="register-auth-label">
+            Почта
+            <input
+              type="email"
+              className="register-auth-input"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@example.com"
+              required
+            />
+          </label>
+
+          <label className="register-auth-label">
+            Пароль
+            <div className="register-password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="register-auth-input"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Не меньше 6 символов"
+                minLength={6}
+                required
+              />
+              <button
+                type="button"
+                className="register-password-toggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? 'Скрыть' : 'Показать'}
+              </button>
+            </div>
+          </label>
+
+          {isRegisterMode && (
+            <>
+              <label className="register-auth-label">
+                Подтверждение пароля
+                <div className="register-password-field">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="register-auth-input"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="Повтори пароль"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="register-password-toggle"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  >
+                    {showConfirmPassword ? 'Скрыть' : 'Показать'}
+                  </button>
+                </div>
+              </label>
+
+              <div className="register-agreements">
+                <label className="register-agreement-item">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(event) => setAcceptedTerms(event.target.checked)}
+                  />
+                  <span>
+                    Я принимаю{' '}
+                    <Link to="/terms" target="_blank" rel="noreferrer">
+                      пользовательское соглашение
+                    </Link>
+                  </span>
+                </label>
+
+                <label className="register-agreement-item">
+                  <input
+                    type="checkbox"
+                    checked={acceptedPrivacyPolicy}
+                    onChange={(event) => setAcceptedPrivacyPolicy(event.target.checked)}
+                  />
+                  <span>
+                    Я принимаю{' '}
+                    <Link to="/privacy-policy" target="_blank" rel="noreferrer">
+                      политику конфиденциальности
+                    </Link>
+                  </span>
+                </label>
+              </div>
+            </>
+          )}
+
+          {error && <div className="register-auth-error">{error}</div>}
+
+          <button type="submit" className="register-auth-submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Подождите...' : submitLabel}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function Register({ initialAuthMode = 'register' }) {
   const navigate = useNavigate();
+  const [authMode, setAuthMode] = useState(initialAuthMode);
+  const [authUser, setAuthUser] = useState(() => getCurrentUser());
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -21,224 +191,316 @@ export default function Register() {
   const [isComplete, setIsComplete] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [extractedData, setExtractedData] = useState(null);
+  const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Инициализация сессии
+  const canStartOnboarding = Boolean(authUser?.id && !sessionId && !isComplete);
+
   useEffect(() => {
     const initSession = async () => {
+      if (!canStartOnboarding) {
+        return;
+      }
+
       try {
         const data = await onboardingApi.startSession();
         setSessionId(data.session_id);
-        setIsTyping(true);
-        setTimeout(() => {
-          setIsTyping(false);
-          setMessages([{ 
-            type: 'bot', 
-            text: 'Привет! Я помогу заполнить твой профиль. Это займёт пару минут.\n\nНачнём с главного — как тебя зовут и на каком ты курсе?' 
-          }]);
-        }, 800);
-      } catch (error) {
-        console.error('Error starting onboarding:', error);
+        setMessages([
+          {
+            type: 'bot',
+            text: 'Привет! Я помогу заполнить твой профиль. Это займёт пару минут.\n\nНачнём с главного: как тебя зовут и на каком ты курсе?',
+          },
+        ]);
+        setError('');
+      } catch {
+        setError('Не удалось начать AI-регистрацию. Проверь backend и попробуй ещё раз.');
       }
     };
+
     initSession();
-  }, []);
+  }, [authUser, canStartOnboarding, sessionId, isComplete]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || !sessionId) return;
+  const applyChatResponse = (response) => {
+    if (response.extracted_data) {
+      setExtractedData(response.extracted_data);
+    }
 
-    const newMessages = [...messages, { type: 'user', text: inputValue }];
-    setMessages(newMessages);
-    setInputValue('');
-    setIsTyping(true);
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: 'bot',
+        text: response.reply,
+        showComplete: response.is_ready_to_confirm,
+      },
+    ]);
 
-    try {
-      const response = await onboardingApi.chat(sessionId, inputValue);
-      
-      // Обновляем извлечённые данные в реальном времени
-      if (response.extracted_data) {
-        setExtractedData(response.extracted_data);
-      }
-
-      setTimeout(() => {
-        setIsTyping(false);
-        const botMsg = { 
-          type: 'bot', 
-          text: response.reply,
-          showComplete: response.is_ready_to_confirm
-        };
-        setMessages((prev) => [...prev, botMsg]);
-        
-        if (response.is_ready_to_confirm) {
-          setIsComplete(true);
-          setCurrentStep(4); // Последний шаг
-        } else {
-          // Переходим к следующему шагу только если бот готов
-          setCurrentStep(prev => {
-            const next = prev + 1;
-            return next < STEPS.length ? next : prev;
-          });
-        }
-      }, 800);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setIsTyping(false);
-      setMessages((prev) => [...prev, { type: 'bot', text: 'Произошла ошибка. Попробуйте ещё раз.' }]);
+    if (response.is_ready_to_confirm) {
+      setIsComplete(true);
+      setCurrentStep(4);
+    } else {
+      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length - 1));
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') handleSendMessage();
+  const sendToOnboarding = async (text, shownText = text) => {
+    if (!sessionId) {
+      return;
+    }
+
+    setMessages((prev) => [...prev, { type: 'user', text: shownText }]);
+    setInputValue('');
+    setIsTyping(true);
+    setError('');
+
+    try {
+      const response = await onboardingApi.chat(sessionId, text);
+      applyChatResponse(response);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { type: 'bot', text: 'Произошла ошибка. Попробуй ещё раз.' },
+      ]);
+      setError('AI-регистрация сейчас недоступна.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleAuthSubmit = async ({
+    email,
+    password,
+    acceptedTerms,
+    acceptedPrivacyPolicy,
+    localError,
+  }) => {
+    if (localError) {
+      setAuthError(localError);
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError('');
+
+    try {
+      const response =
+        authMode === 'register'
+          ? await authApi.register(email, password, {
+              acceptedTerms,
+              acceptedPrivacyPolicy,
+            })
+          : await authApi.login(email, password);
+
+      const user = {
+        id: response.id,
+        email: response.email,
+        name: response.full_name,
+        isProfileComplete: response.is_profile_complete,
+        isAdmin: response.is_admin,
+        mustChangePassword: response.must_change_password,
+      };
+
+      setAccessToken(response.access_token);
+      setCurrentUser(user);
+      setAuthUser(user);
+
+      if (response.must_change_password) {
+        navigate(`/edit-profile/${response.id}`);
+      } else if (authMode === 'login' && response.is_profile_complete) {
+        navigate(`/profile/${response.id}`);
+      }
+    } catch (submitError) {
+      setAuthError(submitError.message.replaceAll('"', ''));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !sessionId) {
+      return;
+    }
+
+    await sendToOnboarding(inputValue.trim());
+  };
+
+  const handleSkipQuestion = async () => {
+    if (!sessionId || isComplete || isTyping) {
+      return;
+    }
+
+    await sendToOnboarding('__skip__', 'Пропустить');
+  };
+
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      handleSendMessage();
+    }
   };
 
   const getInitials = (name) => {
-    if (!name) return 'АК';
+    if (!name) {
+      return 'АК';
+    }
     const parts = name.split(' ');
-    return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
+    return `${parts[0]?.[0] || ''}${parts[1]?.[0] || ''}`.toUpperCase();
   };
 
-  const progress = ((currentStep + 1) / STEPS.length) * 100;
+  const progress = useMemo(() => ((currentStep + 1) / STEPS.length) * 100, [currentStep]);
 
   const handleGoToProfile = async () => {
     if (!sessionId) {
-      alert('Ошибка: нет сессии');
+      setError('Нет активной сессии регистрации.');
       return;
     }
+
     try {
       const userData = await onboardingApi.confirmProfile(sessionId);
-      localStorage.setItem('currentUser', JSON.stringify({
+      const nextUser = {
         id: userData.id,
+        email: authUser?.email,
         name: userData.full_name,
-        telegram: userData.telegram_username
-      }));
+        isProfileComplete: true,
+        isAdmin: authUser?.isAdmin || false,
+        mustChangePassword: false,
+      };
+      setCurrentUser(nextUser);
       window.location.href = `/profile/${userData.id}`;
-    } catch (error) {
-      console.error('Error confirming profile:', error);
-      alert('Ошибка: ' + error.message);
-      navigate('/');
+    } catch {
+      setError('Не удалось сохранить профиль.');
     }
   };
 
-  const handleGoToSearch = () => {
-    navigate('/');
-  };
+  if (!authUser) {
+    return (
+      <div className="register-page">
+        <nav className="register-navbar">
+          <div className="register-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+            <img src={logo} alt="VuzHub Logo" className="logo-img" />
+            Vuz<span>Hub</span>
+          </div>
+          <div className="register-nav-right">
+            <button className="nav-back" onClick={() => navigate('/')}>
+              ← К поиску
+            </button>
+          </div>
+        </nav>
+        <AuthForm
+          mode={authMode}
+          onSwitchMode={setAuthMode}
+          onSubmit={handleAuthSubmit}
+          isSubmitting={authLoading}
+          error={authError}
+        />
+        <SiteFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="register-page">
-      <nav className="navbar">
-        <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+      <nav className="register-navbar">
+        <div className="register-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <img src={logo} alt="VuzHub Logo" className="logo-img" />
           Vuz<span>Hub</span>
         </div>
-        <div className="nav-right">
-          <button className="nav-back" onClick={handleGoToSearch}>
+        <div className="register-nav-right">
+          <button className="nav-back" onClick={() => navigate('/')}>
             ← К поиску
           </button>
-          <div className="nav-hint">Регистрация через AI-помощника</div>
+          <div className="register-nav-hint">{authUser.email}</div>
         </div>
       </nav>
 
-      <div className="layout full-screen">
-        <div className="left-panel">
-          <div className="left-label">Шаги регистрации</div>
+      <div className="register-layout">
+        <div className="register-left-panel">
+          <div className="register-left-label">Шаги регистрации</div>
 
-          <div className="step-list">
+          <div className="register-step-list">
             {STEPS.map((step, index) => (
-              <div className="step" key={index}>
+              <div className="register-step" key={step.title}>
                 <div
-                  className={`step-num ${
+                  className={`register-step-num ${
                     index < currentStep ? 'done' : index === currentStep ? 'active' : 'idle'
                   }`}
                 >
                   {index < currentStep ? '✓' : index + 1}
                 </div>
-                <div className="step-content">
-                  <div className={`step-title ${index > currentStep ? 'idle' : ''}`}>
+                <div className="register-step-content">
+                  <div className={`register-step-title ${index > currentStep ? 'idle' : ''}`}>
                     {step.title}
                   </div>
-                  <div className="step-desc">{step.desc}</div>
+                  <div className="register-step-desc">{step.desc}</div>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="preview-card">
-            <div className="preview-label">Предпросмотр профиля</div>
-            <div className="preview-head">
-              <div className="preview-avatar">
-                {getInitials(extractedData?.full_name)}
-              </div>
+          <div className="register-preview-card">
+            <div className="register-preview-label">Предпросмотр профиля</div>
+            <div className="register-preview-head">
+              <div className="register-preview-avatar">{getInitials(extractedData?.full_name || authUser?.name)}</div>
               <div>
-                <div className="preview-name">
-                  {extractedData?.full_name || 'Имя Фамилия'}
+                <div className="register-preview-name">
+                  {extractedData?.full_name || authUser?.name || 'Имя Фамилия'}
                 </div>
-                <div className="preview-sub">
+                <div className="register-preview-sub">
                   {extractedData?.department || 'Факультет'}
                   {extractedData?.course && ` · ${extractedData.course} курс`}
                 </div>
               </div>
             </div>
-            <div className="preview-tags">
-              {(extractedData?.tags_array || []).slice(0, 3).map((tag, idx) => (
-                <span key={idx} className="ptag">
+            <div className="register-preview-tags">
+              {(extractedData?.tags_array || []).slice(0, 3).map((tag, index) => (
+                <span key={index} className="register-ptag">
                   {tag}
                 </span>
               ))}
-              {(extractedData?.tags_array || []).length > 3 && (
-                <span className="ptag" style={{ opacity: 0.4 }}>
-                  + ещё...
-                </span>
-              )}
             </div>
           </div>
         </div>
 
-        <div className="right-panel">
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+        <div className="register-right-panel">
+          <div className="register-progress-bar">
+            <div className="register-progress-fill" style={{ width: `${progress}%` }}></div>
           </div>
 
-          <div className="chat-header">
-            <div className="chat-header-title">{STEPS[currentStep]?.title}</div>
-            <div className="chat-header-sub">
-              Шаг {currentStep + 1} из {STEPS.length} — AI поможет заполнить профиль
+          <div className="register-chat-header">
+            <div className="register-chat-header-title">{STEPS[currentStep]?.title}</div>
+            <div className="register-chat-header-sub">
+              Шаг {currentStep + 1} из {STEPS.length} — AI заполнит профиль для твоего аккаунта
             </div>
           </div>
 
-          <div className="messages">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`msg ${msg.type}`}>
-                <div className={`msg-avatar ${msg.type === 'bot' ? 'bot' : 'me'}`}>
-                  {msg.type === 'bot' ? '✦' : getInitials(extractedData?.full_name)}
+          <div className="register-messages">
+            {messages.map((msg, index) => (
+              <div key={index} className={`register-msg ${msg.type}`}>
+                <div className={`register-msg-avatar ${msg.type === 'bot' ? 'bot' : 'me'}`}>
+                  {msg.type === 'bot' ? '✦' : getInitials(extractedData?.full_name || authUser?.name)}
                 </div>
                 <div>
-                  <div className={`bubble ${msg.type}`}>
-                    {msg.text.split('\n').map((line, i) => (
-                      <span key={i}>
+                  <div className={`register-bubble ${msg.type}`}>
+                    {msg.text.split('\n').map((line, lineIndex, lines) => (
+                      <span key={lineIndex}>
                         {line}
-                        {i < msg.text.split('\n').length - 1 && <br />}
+                        {lineIndex < lines.length - 1 && <br />}
                       </span>
                     ))}
                     {msg.showComplete && (
-                      <div className="complete-actions">
+                      <div className="register-complete-actions">
                         <button className="btn-primary" onClick={handleGoToProfile}>
                           Открыть профиль
                         </button>
-                        <button className="btn-ghost" onClick={handleGoToSearch}>
+                        <button className="btn-ghost" onClick={() => navigate('/')}>
                           Перейти к поиску
                         </button>
                       </div>
                     )}
                   </div>
-                  <div className="msg-time" style={{ textAlign: msg.type === 'user' ? 'right' : '' }}>
+                  <div className="register-msg-time" style={{ textAlign: msg.type === 'user' ? 'right' : '' }}>
                     {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
@@ -246,10 +508,10 @@ export default function Register() {
             ))}
 
             {isTyping && (
-              <div className="msg">
-                <div className="msg-avatar bot">✦</div>
+              <div className="register-msg">
+                <div className="register-msg-avatar bot">✦</div>
                 <div>
-                  <div className="typing">
+                  <div className="register-typing">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -261,24 +523,33 @@ export default function Register() {
           </div>
 
           {!isComplete && (
-            <div className="input-area">
-              <div className="input-wrap">
+            <div className="register-input-area">
+              <div className="register-input-wrap">
                 <input
                   type="text"
                   placeholder="Напиши что-нибудь..."
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onChange={(event) => setInputValue(event.target.value)}
+                  onKeyDown={handleKeyPress}
                 />
-                <button className="send-btn" onClick={handleSendMessage}>
+                <button className="register-send-btn" onClick={handleSendMessage} disabled={isTyping}>
                   Отправить
                 </button>
               </div>
-              <div className="input-hint">AI сам сформирует текст профиля из твоих ответов</div>
+              <div className="register-secondary-actions">
+                <button type="button" className="register-skip-btn" onClick={handleSkipQuestion} disabled={isTyping}>
+                  Пропустить вопрос
+                </button>
+              </div>
+              <div className="register-input-hint">
+                Данные из этого диалога будут сохранены в твой текущий аккаунт
+              </div>
+              {error && <div className="register-error">{error}</div>}
             </div>
           )}
         </div>
       </div>
+      <SiteFooter />
     </div>
   );
 }

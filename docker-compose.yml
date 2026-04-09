@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # PostgreSQL с поддержкой pgvector
   db:
     image: ankane/pgvector:v0.5.1
     environment:
@@ -18,7 +15,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend (FastAPI)
   backend:
     build:
       context: ./backend
@@ -29,26 +25,21 @@ services:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql://vuzhub_user:vuzhub_pass123@db:5432/vuzhub_db
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
-  # Frontend (Vite + React)
   frontend:
-    image: node:20-alpine
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: /
     ports:
-      - "3000:5173"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_URL=http://backend:8000/api/v1
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+      - "3000:80"
     depends_on:
       - backend
 

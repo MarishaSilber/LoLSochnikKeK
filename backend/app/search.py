@@ -1,13 +1,15 @@
+from typing import List
+
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
-from sqlalchemy import text, func, and_
-from typing import List, Optional
+
 from .models import User
 from .schemas import SearchQuery
 
 WEIGHTS = {"course": 2.0, "department": 0.5, "location": 0.8, "tags": 1.5, "semantic": 1.0, "trust": 0.3, "activity": 0.4}
 
 def smart_search(db: Session, query: SearchQuery) -> List[User]:
-    filters = []
+    filters = [User.is_profile_complete == True, User.is_hidden == False]
     if query.is_mentor_only: filters.append(User.is_mentor == True)
     if query.course_filter: filters.append(User.course == query.course_filter)
     if query.department_filter: filters.append(User.department.ilike(f"%{query.department_filter}%"))
@@ -21,6 +23,3 @@ def update_search_vector(db: Session, user: User):
     if user.bio_raw or user.tags_array:
         user.search_vector = func.to_tsvector("russian", user.bio_raw or "").op("||")(func.to_tsvector("russian", " ".join(user.tags_array or [])))
         db.commit()
-
-def create_index_statements() -> List[str]:
-    return ["CREATE EXTENSION IF NOT EXISTS vector;", "CREATE EXTENSION IF NOT EXISTS pg_trgm;", "CREATE INDEX IF NOT EXISTS idx_users_search_vector ON users USING GIN(search_vector);"]

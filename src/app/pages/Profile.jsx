@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { usersApi } from '../api/api';
+import { authApi, usersApi } from '../api/api';
 import './Profile.css';
 import logo from '../../assets/sochnik.png';
+import { getCurrentUser, setCurrentUser as persistCurrentUser } from '../utils/session';
+import { formatCourseLabel, getInitials, mapUserToCard } from '../utils/users';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -11,40 +13,47 @@ export default function Profile() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('currentUser');
-    if (stored) {
-      setCurrentUser(JSON.parse(stored));
-    }
+    setCurrentUser(getCurrentUser());
   }, []);
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        console.log('Loading profile:', id);
         const userData = await usersApi.getUser(id);
-        console.log('User data:', userData);
+        const mappedUser = mapUserToCard(userData);
 
         setProfile({
-          name: userData.full_name,
-          course: `${userData.course} курс`,
-          faculty: userData.department,
-          location: userData.location_name || 'Не указано',
-          hours: 'Пн–Пт, 13:00–18:00',
-          telegram: userData.telegram_username || '@не_указан',
+          id: mappedUser.id,
+          name: mappedUser.name,
+          course: formatCourseLabel(mappedUser.course),
+          faculty: mappedUser.faculty,
+          location: mappedUser.location,
+          hours: 'Пн-Пт, 13:00-18:00',
+          telegram: mappedUser.telegram || '@не_указан',
           stats: {
             reviews: 0,
-            rating: userData.trust_score ? userData.trust_score.toFixed(1) : '5.0',
-            helped: 0,
+            rating: mappedUser.trustScore ? mappedUser.trustScore.toFixed(1) : '5.0',
+            helped: mappedUser.helpedCount,
             responseTime: '~1ч',
           },
-          bio: userData.bio_raw || 'Нет описания',
-          tags: userData.tags_array || [],
+          bio: mappedUser.bio,
+          tags: mappedUser.tags,
         });
-      } catch (error) {
-        console.error('Error loading profile:', error);
-        setError(error.message);
+      } catch (loadError) {
+        setError(loadError.message);
       } finally {
         setLoading(false);
       }
@@ -56,6 +65,43 @@ export default function Profile() {
   }, [id]);
 
   const isOwner = currentUser && profile && String(currentUser.id) === String(id);
+
+  const handlePasswordChange = (event) => {
+    const { name, value } = event.target;
+    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = async (event) => {
+    event.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Новый пароль и подтверждение не совпадают.');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      const storedUser = getCurrentUser();
+      if (storedUser) {
+        const nextUser = { ...storedUser, mustChangePassword: false };
+        persistCurrentUser(nextUser);
+        setCurrentUser(nextUser);
+      }
+      setPasswordSuccess('Пароль обновлён.');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (submitError) {
+      setPasswordError(submitError.message.replaceAll('"', ''));
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -70,11 +116,27 @@ export default function Profile() {
   if (error || !profile) {
     return (
       <div className="profile-page">
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '1rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            flexDirection: 'column',
+            gap: '1rem',
+          }}
+        >
           <p>Профиль не найден</p>
-          <button 
+          <button
             onClick={() => navigate('/')}
-            style={{ padding: '10px 20px', background: '#4a3d5c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+            style={{
+              padding: '10px 20px',
+              background: '#4a3d5c',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+            }}
           >
             На главную
           </button>
@@ -83,7 +145,7 @@ export default function Profile() {
     );
   }
 
-  const TAGS = profile.tags || [];
+  const mainClassName = isOwner ? 'main main-owner' : 'main';
 
   return (
     <div className="profile-page">
@@ -107,9 +169,7 @@ export default function Profile() {
       <div className="profile-band">
         <div className="profile-top">
           <div className="avatar-wrap">
-            <div className="avatar">
-              {profile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-            </div>
+            <div className="avatar">{getInitials(profile.name)}</div>
           </div>
           <div className="profile-meta">
             <div className="profile-name">{profile.name}</div>
@@ -123,22 +183,111 @@ export default function Profile() {
           </div>
           <div className="profile-actions">
             <button className="btn-ghost">{profile.telegram}</button>
-            <button className="btn-primary" onClick={() => navigate(`/chat/${id}`)}>
+            <button className="btn-primary" onClick={() => navigate(`/chat?targetUser=${id}`)}>
               Написать
             </button>
           </div>
         </div>
         <div className="tags-row">
-          {TAGS.map((tag, idx) => (
-            <span key={idx} className="ptag">
+          {(profile.tags || []).map((tag, index) => (
+            <span key={index} className="ptag">
               {tag}
             </span>
           ))}
         </div>
       </div>
 
-      <div className="main">
-        <div className="left">
+      <div className={mainClassName}>
+        {isOwner && (
+          <div className="column-left">
+            <div className="card">
+              <div className="card-header">
+                <span className="card-title">Безопасность</span>
+              </div>
+              <div className="card-body">
+                <form onSubmit={handlePasswordSubmit} className="profile-password-form">
+                  <div className="profile-password-copy">
+                    Здесь можно сменить пароль от аккаунта.
+                  </div>
+                  <div>
+                    <label className="profile-password-label">Текущий пароль</label>
+                    <div className="profile-password-field">
+                      <input
+                        type={showCurrentPassword ? 'text' : 'password'}
+                        name="currentPassword"
+                        value={passwordForm.currentPassword}
+                        onChange={handlePasswordChange}
+                        className="profile-password-input"
+                        minLength={6}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="profile-password-toggle"
+                        onClick={() => setShowCurrentPassword((prev) => !prev)}
+                      >
+                        {showCurrentPassword ? 'Скрыть' : 'Показать'}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="profile-password-label">Новый пароль</label>
+                    <div className="profile-password-field">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        name="newPassword"
+                        value={passwordForm.newPassword}
+                        onChange={handlePasswordChange}
+                        className="profile-password-input"
+                        minLength={6}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="profile-password-toggle"
+                        onClick={() => setShowNewPassword((prev) => !prev)}
+                      >
+                        {showNewPassword ? 'Скрыть' : 'Показать'}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="profile-password-label">Подтверждение нового пароля</label>
+                    <div className="profile-password-field">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={passwordForm.confirmPassword}
+                        onChange={handlePasswordChange}
+                        className="profile-password-input"
+                        minLength={6}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="profile-password-toggle"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      >
+                        {showConfirmPassword ? 'Скрыть' : 'Показать'}
+                      </button>
+                    </div>
+                  </div>
+                  {passwordError && <div className="profile-password-error">{passwordError}</div>}
+                  {passwordSuccess && <div className="profile-password-success">{passwordSuccess}</div>}
+                  <button
+                    type="submit"
+                    disabled={passwordSaving}
+                    className="profile-password-submit"
+                  >
+                    {passwordSaving ? 'Обновление...' : 'Обновить пароль'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="column-center">
           <div className="card">
             <div className="card-header">
               <span className="card-title">О себе</span>
@@ -160,7 +309,7 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="right">
+        <div className="column-right">
           <div className="card">
             <div className="stat-row">
               <div className="stat-pill">
@@ -169,7 +318,7 @@ export default function Profile() {
               </div>
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.helped}</div>
-                <div className="stat-label">помогла</div>
+                <div className="stat-label">помог(ла)</div>
               </div>
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.responseTime}</div>
@@ -182,7 +331,7 @@ export default function Profile() {
             <div className="card-body info-section">
               <div className="info-row">
                 <div className="info-item">
-                  <div className="info-icon blush">📍</div>
+                  <div className="info-icon blush">📌</div>
                   <div>
                     <div className="info-label">Где найти</div>
                     <div className="info-value">
@@ -193,7 +342,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="info-item">
-                  <div className="info-icon olive">✉️</div>
+                  <div className="info-icon olive">✉</div>
                   <div>
                     <div className="info-label">Telegram</div>
                     <div className="info-value telegram">{profile.telegram}</div>
@@ -216,7 +365,7 @@ export default function Profile() {
 
           <div className="card">
             <div className="contact-block">
-              <button className="contact-btn" onClick={() => navigate(`/chat/${id}`)}>
+              <button className="contact-btn" onClick={() => navigate(`/chat?targetUser=${id}`)}>
                 Написать в чат
               </button>
               <button className="contact-btn-sec">Написать в Telegram</button>

@@ -6,3 +6,6 @@ pydantic==2.5.3
 pydantic-settings==2.1.0
 python-dotenv==1.0.0
 pgvector==0.2.4
+httpx>=0.28.0
+email-validator>=2.2.0
+alembic==1.14.1

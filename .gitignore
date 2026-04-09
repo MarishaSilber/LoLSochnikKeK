@@ -11,8 +11,15 @@ venv/
 *.swp
 # Environment
 .env
+backend/.env
+*.env.local
+*.env.production
+*.env.development
 # Node
 node_modules/
+dist/
 # OS
 .DS_Store
 Thumbs.db
+backups/
+*.dump
