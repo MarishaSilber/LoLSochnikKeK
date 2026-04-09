@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from . import models
 from .database import get_db
-from .rate_limit import enforce_rate_limit
+from .rate_limit import clear_rate_limit_bucket, enforce_failed_attempt_limit, enforce_rate_limit, register_failed_attempt
 from .schemas import (
     AdminAuditLogResponse,
     AdminRoleUpdateRequest,
@@ -181,8 +181,8 @@ def ensure_default_admin() -> None:
             if not admin_user.password_hash:
                 admin_user.password_hash = hash_password(BOOTSTRAP_ADMIN_PASSWORD)
                 changed = True
-            if not admin_user.must_change_password:
-                admin_user.must_change_password = True
+            if admin_user.must_change_password:
+                admin_user.must_change_password = False
                 changed = True
             if changed:
                 db.commit()
@@ -195,7 +195,7 @@ def ensure_default_admin() -> None:
             course=1,
             is_mentor=False,
             is_admin=True,
-            must_change_password=True,
+            must_change_password=False,
             is_profile_complete=False,
             tags_array=[],
         )
@@ -398,13 +398,15 @@ def build_conversation_summary(db: Session, current_user: models.User, conversat
 
 @api_router.post("/auth/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register_account(payload: AuthRegisterRequest, request: Request, db: Session = Depends(get_db)):
-    enforce_rate_limit(request, "auth-register")
+    enforce_failed_attempt_limit(request, "auth-register-fail")
 
     if not payload.accepted_terms or not payload.accepted_privacy_policy:
+        register_failed_attempt(request, "auth-register-fail")
         raise HTTPException(status_code=400, detail="You must accept the terms and privacy policy")
 
     existing_user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
     if existing_user:
+        register_failed_attempt(request, "auth-register-fail")
         raise HTTPException(status_code=400, detail="Account with this email already exists")
 
     now = datetime.now(timezone.utc)
@@ -425,16 +427,19 @@ def register_account(payload: AuthRegisterRequest, request: Request, db: Session
     db.commit()
     db.refresh(user)
     ensure_support_conversation(db, user.id)
+    clear_rate_limit_bucket(request, "auth-register-fail")
     return build_auth_response(user)
 
 
 @api_router.post("/auth/login", response_model=AuthResponse)
 def login_account(payload: AuthLoginRequest, request: Request, db: Session = Depends(get_db)):
-    enforce_rate_limit(request, "auth-login")
+    enforce_failed_attempt_limit(request, "auth-login-fail")
 
     user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
     if not user or not verify_password(payload.password, user.password_hash):
+        register_failed_attempt(request, "auth-login-fail")
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    clear_rate_limit_bucket(request, "auth-login-fail")
     return build_auth_response(user)
 
 
@@ -1089,8 +1094,10 @@ async def onboarding_confirm(
     history = session["history"]
     interview_state = session["state"]
     extracted_data = await extract_profile_data(history)
-    if not extracted_data or not extracted_data.get("full_name"):
-        raise HTTPException(status_code=400, detail="Not enough data to create profile")
+    full_name = (extracted_data or {}).get("full_name") or ""
+    full_name_parts = [part for part in full_name.split() if part]
+    if not extracted_data or len(full_name_parts) < 2 or not extracted_data.get("course"):
+        raise HTTPException(status_code=400, detail="Имя, фамилия и курс обязательны для регистрации")
 
     user = db.query(models.User).filter(models.User.id == current_user.id).first()
     if not user:

@@ -269,15 +269,25 @@ export default function Chat() {
     }
 
     try {
-      await chatApi.setArchived(activeConversation.id, !activeConversation.archived);
-      await refreshConversationList(archivedView);
+      const nextArchived = !activeConversation.archived;
+      await chatApi.setArchived(activeConversation.id, nextArchived);
 
-      if (activeConversation.archived) {
-        setActiveConversation((prev) => (prev ? { ...prev, archived: false } : prev));
-      } else if (archivedView) {
-        clearConversationSelection({ replace: true });
-        setActiveConversation(null);
+      if (nextArchived) {
+        await refreshConversationList(archivedView);
+        setActiveConversation((prev) => (prev ? { ...prev, archived: true } : prev));
+
+        if (archivedView) {
+          clearConversationSelection({ replace: true });
+          setActiveConversation(null);
+        }
+        return;
       }
+
+      const refreshedConversation = await chatApi.getConversation(activeConversation.id);
+      setActiveConversation(refreshedConversation);
+      handleToggleArchiveView(false);
+      openConversation(activeConversation.id, { replace: true });
+      await refreshConversationList(false);
     } catch (requestError) {
       setError(requestError.message.replaceAll('"', ''));
     }

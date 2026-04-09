@@ -76,9 +76,9 @@ class AuthResponse(BaseModel):
 
 class AdminUserResponse(BaseModel):
     id: UUID
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     full_name: str
-    course: int
+    course: Optional[int] = None
     department: Optional[str] = None
     location_name: Optional[str] = None
     is_mentor: bool
@@ -86,7 +86,7 @@ class AdminUserResponse(BaseModel):
     is_admin: bool
     is_hidden: bool
     tags_array: Optional[List[str]] = []
-    last_active: datetime
+    last_active: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -104,10 +104,10 @@ class AdminAuditLogResponse(BaseModel):
     id: int
     admin_id: UUID
     admin_name: str
-    admin_email: Optional[EmailStr] = None
+    admin_email: Optional[str] = None
     target_user_id: Optional[UUID] = None
     target_user_name: Optional[str] = None
-    target_user_email: Optional[EmailStr] = None
+    target_user_email: Optional[str] = None
     action: str
     details: Optional[str] = None
     created_at: datetime

@@ -198,7 +198,7 @@ export default function Register({ initialAuthMode = 'register' }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const canStartOnboarding = Boolean(authUser?.id && !sessionId && !isComplete);
+  const canStartOnboarding = Boolean(authUser?.id && !authUser?.isAdmin && !sessionId && !isComplete);
 
   useEffect(() => {
     const initSession = async () => {
@@ -225,20 +225,29 @@ export default function Register({ initialAuthMode = 'register' }) {
   }, [authUser, canStartOnboarding, sessionId, isComplete]);
 
   const applyChatResponse = (response) => {
-    if (response.extracted_data) {
-      setExtractedData(response.extracted_data);
+    const replyText =
+      typeof response?.reply === 'string'
+        ? response.reply
+        : response?.reply == null
+          ? 'Не удалось обработать ответ.'
+          : String(response.reply);
+    const nextExtractedData =
+      response?.extracted_data && typeof response.extracted_data === 'object' ? response.extracted_data : null;
+
+    if (nextExtractedData) {
+      setExtractedData(nextExtractedData);
     }
 
     setMessages((prev) => [
       ...prev,
       {
         type: 'bot',
-        text: response.reply,
-        showComplete: response.is_ready_to_confirm,
+        text: replyText,
+        showComplete: Boolean(response?.is_ready_to_confirm),
       },
     ]);
 
-    if (response.is_ready_to_confirm) {
+    if (response?.is_ready_to_confirm) {
       setIsComplete(true);
       setCurrentStep(4);
     } else {
@@ -307,7 +316,9 @@ export default function Register({ initialAuthMode = 'register' }) {
       setCurrentUser(user);
       setAuthUser(user);
 
-      if (response.must_change_password) {
+      if (response.is_admin) {
+        navigate('/admin');
+      } else if (response.must_change_password) {
         navigate(`/edit-profile/${response.id}`);
       } else if (authMode === 'login' && response.is_profile_complete) {
         navigate(`/profile/${response.id}`);
@@ -320,7 +331,12 @@ export default function Register({ initialAuthMode = 'register' }) {
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || !sessionId) {
+    if (!inputValue.trim()) {
+      return;
+    }
+
+    if (!sessionId) {
+      setError('Сессия AI-регистрации ещё не готова. Подожди пару секунд и попробуй снова.');
       return;
     }
 
@@ -329,6 +345,11 @@ export default function Register({ initialAuthMode = 'register' }) {
 
   const handleSkipQuestion = async () => {
     if (!sessionId || isComplete || isTyping) {
+      return;
+    }
+
+    if (currentStep === 0) {
+      setError('Имя, фамилию и курс пропустить нельзя.');
       return;
     }
 
@@ -483,7 +504,7 @@ export default function Register({ initialAuthMode = 'register' }) {
                 </div>
                 <div>
                   <div className={`register-bubble ${msg.type}`}>
-                    {msg.text.split('\n').map((line, lineIndex, lines) => (
+                    {(typeof msg.text === 'string' ? msg.text : String(msg.text ?? '')).split('\n').map((line, lineIndex, lines) => (
                       <span key={lineIndex}>
                         {line}
                         {lineIndex < lines.length - 1 && <br />}
@@ -531,13 +552,20 @@ export default function Register({ initialAuthMode = 'register' }) {
                   value={inputValue}
                   onChange={(event) => setInputValue(event.target.value)}
                   onKeyDown={handleKeyPress}
+                  disabled={!sessionId || isTyping}
                 />
-                <button className="register-send-btn" onClick={handleSendMessage} disabled={isTyping}>
+                <button className="register-send-btn" onClick={handleSendMessage} disabled={isTyping || !sessionId}>
                   Отправить
                 </button>
               </div>
               <div className="register-secondary-actions">
-                <button type="button" className="register-skip-btn" onClick={handleSkipQuestion} disabled={isTyping}>
+                <button
+                  type="button"
+                  className="register-skip-btn"
+                  onClick={handleSkipQuestion}
+                  disabled={isTyping || currentStep === 0}
+                  title={currentStep === 0 ? 'Имя, фамилия и курс обязательны' : ''}
+                >
                   Пропустить вопрос
                 </button>
               </div>
