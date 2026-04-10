@@ -467,7 +467,7 @@ export default function Profile() {
             </div>
             <div className="card-body">
               {!isOwner && currentUser && (
-                <form className="review-form" onSubmit={handleReviewSubmit}>
+                <form className="review-form review-form-compact" onSubmit={handleReviewSubmit}>
                   <div className="review-form-row">
                     <label className="profile-password-label" htmlFor="review-score">Оценка</label>
                     <select

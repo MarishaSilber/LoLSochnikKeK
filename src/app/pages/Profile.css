@@ -495,14 +495,18 @@
 .review-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   margin-bottom: 1.5rem;
+}
+
+.review-form-compact {
+  margin-bottom: 1rem;
 }
 
 .review-form-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .review-select,
@@ -517,13 +521,13 @@
 }
 
 .review-select {
-  min-height: 44px;
-  padding: 0 14px;
+  min-height: 40px;
+  padding: 0 12px;
 }
 
 .review-textarea {
-  min-height: 110px;
-  padding: 12px 14px;
+  min-height: 72px;
+  padding: 10px 12px;
   resize: vertical;
   line-height: 1.5;
 }
@@ -532,6 +536,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-bottom: 1rem;
 }
 
 .review-item {
