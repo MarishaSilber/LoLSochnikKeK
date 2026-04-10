@@ -471,7 +471,7 @@ export default function Profile() {
         )}
 
         <div className="column-center">
-          <div className="card">
+          <div className="card card-reviews">
             <div className="card-header">
               <span className="card-title">О себе</span>
             </div>

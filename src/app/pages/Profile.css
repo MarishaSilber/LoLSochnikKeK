@@ -228,6 +228,14 @@
   overflow: hidden;
 }
 
+.card-reviews {
+  overflow: visible;
+}
+
+.card-reviews .card-body {
+  overflow: visible;
+}
+
 .column-left .card + .card,
 .column-center .card + .card,
 .column-right .card + .card {
@@ -528,8 +536,9 @@
 .review-textarea {
   min-height: 72px;
   padding: 10px 12px;
-  resize: vertical;
+  resize: none;
   line-height: 1.5;
+  box-sizing: border-box;
 }
 
 .review-list {
