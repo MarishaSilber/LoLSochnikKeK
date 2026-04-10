@@ -10,6 +10,7 @@ export default function EditProfile() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
@@ -66,11 +67,11 @@ export default function EditProfile() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setSaveError('');
     setSaving(true);
 
     try {
-      await usersApi.updateUser(id, formData);
-      const updatedUser = await usersApi.getUser(id);
+      const updatedUser = await usersApi.updateUser(id, formData);
       const currentUser = getCurrentUser();
 
       if (currentUser && String(currentUser.id) === String(id)) {
@@ -81,10 +82,9 @@ export default function EditProfile() {
         });
       }
 
-      navigate(`/profile/${id}`, {
-        replace: true,
-        state: { updatedUser },
-      });
+      window.location.assign(`/profile/${id}`);
+    } catch (error) {
+      setSaveError(error.message.replaceAll('"', ''));
     } finally {
       setSaving(false);
     }
@@ -242,6 +242,7 @@ export default function EditProfile() {
             />
           </div>
           <div className="edit-profile-actions">
+            {saveError && <div className="edit-profile-error">{saveError}</div>}
             <button
               type="submit"
               disabled={saving}
