@@ -155,6 +155,7 @@ class ReviewResponse(BaseModel):
     id: UUID
     reviewer_id: UUID
     reviewed_id: UUID
+    reviewer_name: Optional[str] = None
     score: float
     comment: Optional[str]
     created_at: datetime

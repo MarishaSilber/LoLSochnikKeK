@@ -61,7 +61,7 @@ from .services.email_service import (
     send_password_change_confirmation_email,
     send_registration_verification_email,
 )
-from .services.onboarding_agent import extract_profile_data, get_interviewer_response
+from .services.onboarding_agent import build_bio, extract_profile_data, extract_tags, get_interviewer_response
 from .test_users import seed_test_users
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
@@ -142,6 +142,19 @@ def should_persist_onboarding_answer(previous_slot: str, updated_state: Dict[str
     if previous_slot == "done":
         return False
     return next_slot != previous_slot
+
+
+def build_review_response(review: models.Review, db: Session) -> ReviewResponse:
+    reviewer = db.query(models.User).filter(models.User.id == review.reviewer_id).first()
+    return ReviewResponse(
+        id=review.id,
+        reviewer_id=review.reviewer_id,
+        reviewed_id=review.reviewed_id,
+        reviewer_name=reviewer.full_name if reviewer else None,
+        score=review.score,
+        comment=review.comment,
+        created_at=review.created_at,
+    )
 
 
 def build_auth_response(user: models.User) -> AuthResponse:
@@ -1200,6 +1213,7 @@ async def onboarding_start(
         "user_id": str(current_user.id),
         "history": [],
         "accepted_history": [],
+        "accepted_answers": {},
         "state": {
             "current_slot": "basic",
             "follow_up_count": {},
@@ -1241,6 +1255,7 @@ async def onboarding_chat(
 
     history = session["history"]
     accepted_history = session["accepted_history"]
+    accepted_answers = session["accepted_answers"]
     interview_state = session["state"]
     previous_slot = interview_state.get("current_slot", "basic")
     history.append({"role": "user", "content": payload.text})
@@ -1254,7 +1269,14 @@ async def onboarding_chat(
         if should_persist_onboarding_answer(previous_slot, interview_state):
             accepted_history.append({"role": "user", "content": payload.text})
             accepted_history.append({"role": "assistant", "content": cleaned_reply})
+            accepted_answers[previous_slot] = payload.text
         extracted_data = await extract_profile_data(accepted_history)
+        help_answer = accepted_answers.get("help")
+        if help_answer:
+            help_tags = extract_tags(help_answer)
+            extracted_data = extracted_data or {}
+            extracted_data["bio_raw"] = build_bio(help_answer, help_tags)
+            extracted_data["tags_array"] = help_tags
         return OnboardingChatResponse(
             reply=cleaned_reply,
             is_ready_to_confirm=is_ready_to_confirm,
