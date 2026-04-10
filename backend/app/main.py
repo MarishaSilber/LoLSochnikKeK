@@ -61,7 +61,16 @@ from .services.email_service import (
     send_password_change_confirmation_email,
     send_registration_verification_email,
 )
-from .services.onboarding_agent import build_bio, extract_profile_data, extract_tags, get_interviewer_response
+from .services.onboarding_agent import (
+    build_bio,
+    extract_course,
+    extract_department,
+    extract_full_name,
+    extract_location,
+    extract_tags,
+    extract_telegram,
+    get_interviewer_response,
+)
 from .test_users import seed_test_users
 
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
@@ -155,6 +164,40 @@ def build_review_response(review: models.Review, db: Session) -> ReviewResponse:
         comment=review.comment,
         created_at=review.created_at,
     )
+
+
+async def build_onboarding_profile_data(history: List[Dict[str, str]], accepted_answers: Dict[str, str]) -> dict:
+    data = {}
+
+    basic_answer = accepted_answers.get("basic", "")
+    department_answer = accepted_answers.get("department", "")
+    location_answer = accepted_answers.get("location", "")
+    help_answer = accepted_answers.get("help", "")
+    telegram_answer = accepted_answers.get("telegram", "")
+
+    full_name = extract_full_name(basic_answer) if basic_answer else None
+    course = extract_course(basic_answer) if basic_answer else None
+    department = extract_department(department_answer) if department_answer else None
+    location_name = extract_location(location_answer) if location_answer else None
+    telegram_username = extract_telegram(telegram_answer) if telegram_answer else None
+    help_tags = extract_tags(help_answer) if help_answer else []
+    bio_raw = build_bio(help_answer, help_tags) if help_answer else None
+
+    if full_name:
+        data["full_name"] = full_name
+    if course:
+        data["course"] = course
+    if department:
+        data["department"] = department
+    if location_name:
+        data["location_name"] = location_name
+    if telegram_username:
+        data["telegram_username"] = telegram_username
+    if help_answer:
+        data["bio_raw"] = bio_raw
+        data["tags_array"] = help_tags
+
+    return data
 
 
 def build_auth_response(user: models.User) -> AuthResponse:
@@ -1181,6 +1224,12 @@ def create_review(
 ):
     if current_user.id != review.reviewer_id:
         raise HTTPException(status_code=403, detail="You can only create reviews as yourself")
+    if review.reviewer_id == review.reviewed_id:
+        raise HTTPException(status_code=400, detail="You cannot leave a review for yourself")
+
+    reviewed_user = db.query(models.User).filter(models.User.id == review.reviewed_id).first()
+    if not reviewed_user:
+        raise HTTPException(status_code=404, detail="Reviewed user not found")
 
     db_review = models.Review(**review.model_dump())
     db.add(db_review)
@@ -1188,17 +1237,48 @@ def create_review(
     db.refresh(db_review)
 
     avg_score = db.query(func.avg(models.Review.score)).filter(models.Review.reviewed_id == review.reviewed_id).scalar()
-    user = db.query(models.User).filter(models.User.id == review.reviewed_id).first()
-    if user:
-        user.trust_score = float(avg_score) if avg_score else 0.0
-        db.commit()
+    reviewed_user.trust_score = float(avg_score) if avg_score else 0.0
+    db.commit()
 
-    return db_review
+    return build_review_response(db_review, db)
 
 
 @api_router.get("/users/{user_id}/reviews", response_model=List[ReviewResponse])
 def get_user_reviews(user_id: UUID, db: Session = Depends(get_db)):
-    return db.query(models.Review).filter(models.Review.reviewed_id == user_id).all()
+    reviews = (
+        db.query(models.Review)
+        .filter(models.Review.reviewed_id == user_id)
+        .order_by(models.Review.created_at.desc(), models.Review.id.desc())
+        .all()
+    )
+    return [build_review_response(review, db) for review in reviews]
+
+
+@api_router.delete("/admin/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_review(
+    review_id: UUID,
+    current_admin: models.User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    reviewed_user = db.query(models.User).filter(models.User.id == review.reviewed_id).first()
+    db.delete(review)
+    db.commit()
+
+    if reviewed_user:
+        avg_score = db.query(func.avg(models.Review.score)).filter(models.Review.reviewed_id == reviewed_user.id).scalar()
+        reviewed_user.trust_score = float(avg_score) if avg_score else 0.0
+        write_admin_audit_log(
+            db,
+            admin_id=current_admin.id,
+            action="delete_review",
+            target_user_id=reviewed_user.id,
+            details=f"Deleted review {review_id}",
+        )
+        db.commit()
 
 
 @api_router.post("/onboarding/start", response_model=OnboardingStartResponse)
@@ -1270,13 +1350,7 @@ async def onboarding_chat(
             accepted_history.append({"role": "user", "content": payload.text})
             accepted_history.append({"role": "assistant", "content": cleaned_reply})
             accepted_answers[previous_slot] = payload.text
-        extracted_data = await extract_profile_data(accepted_history)
-        help_answer = accepted_answers.get("help")
-        if help_answer:
-            help_tags = extract_tags(help_answer)
-            extracted_data = extracted_data or {}
-            extracted_data["bio_raw"] = build_bio(help_answer, help_tags)
-            extracted_data["tags_array"] = help_tags
+        extracted_data = await build_onboarding_profile_data(accepted_history, accepted_answers)
         return OnboardingChatResponse(
             reply=cleaned_reply,
             is_ready_to_confirm=is_ready_to_confirm,
@@ -1299,13 +1373,7 @@ async def onboarding_confirm(
     history = session["accepted_history"] or session["history"]
     accepted_answers = session.get("accepted_answers", {})
     interview_state = session["state"]
-    extracted_data = await extract_profile_data(history)
-    help_answer = accepted_answers.get("help")
-    if help_answer:
-        help_tags = extract_tags(help_answer)
-        extracted_data = extracted_data or {}
-        extracted_data["bio_raw"] = build_bio(help_answer, help_tags)
-        extracted_data["tags_array"] = help_tags
+    extracted_data = await build_onboarding_profile_data(history, accepted_answers)
     full_name = (extracted_data or {}).get("full_name") or ""
     full_name_parts = [part for part in full_name.split() if part]
     if not extracted_data or len(full_name_parts) < 2 or not extracted_data.get("course"):

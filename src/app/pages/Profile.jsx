@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { authApi, usersApi } from '../api/api';
+import { adminApi, authApi, reviewsApi, usersApi } from '../api/api';
 import './Profile.css';
 import logo from '../../assets/sochnik.png';
 import { getCurrentUser } from '../utils/session';
 import { formatCourseLabel, getInitials, mapUserToCard } from '../utils/users';
 
-function buildProfileView(userData) {
+function buildProfileView(userData, reviewCount = 0) {
   const mappedUser = mapUserToCard(userData);
 
   return {
@@ -18,7 +18,7 @@ function buildProfileView(userData) {
     hours: 'Пн-Пт, 13:00-18:00',
     telegram: mappedUser.telegram || '@не_указан',
     stats: {
-      reviews: 0,
+      reviews: reviewCount,
       rating: mappedUser.trustScore ? mappedUser.trustScore.toFixed(1) : '5.0',
       helped: mappedUser.helpedCount,
       responseTime: '~1ч',
@@ -28,6 +28,22 @@ function buildProfileView(userData) {
   };
 }
 
+function formatReviewDate(value) {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date(value));
+  } catch {
+    return '';
+  }
+}
+
 export default function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,6 +51,7 @@ export default function Profile() {
   const shouldSkipNextFetchRef = useRef(Boolean(location.state?.updatedUser));
   const [profile, setProfile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -43,6 +60,14 @@ export default function Profile() {
   const [verificationSaving, setVerificationSaving] = useState(false);
   const [verificationError, setVerificationError] = useState('');
   const [verificationSuccess, setVerificationSuccess] = useState('');
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [deletingReviewId, setDeletingReviewId] = useState(null);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
+  const [reviewForm, setReviewForm] = useState({
+    score: 5,
+    comment: '',
+  });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -56,24 +81,41 @@ export default function Profile() {
     setCurrentUser(getCurrentUser());
   }, []);
 
+  const loadReviews = async () => {
+    if (!id) {
+      return [];
+    }
+    const nextReviews = await reviewsApi.getUserReviews(id);
+    setReviews(nextReviews);
+    return nextReviews;
+  };
+
+  const loadProfile = async (reviewCountOverride = null) => {
+    if (!id) {
+      return;
+    }
+    const userData = await usersApi.getUser(id);
+    const reviewCount = reviewCountOverride ?? reviews.length;
+    setProfile(buildProfileView(userData, reviewCount));
+  };
+
   useEffect(() => {
     const updatedUser = location.state?.updatedUser;
     if (updatedUser) {
-      setProfile(buildProfileView(updatedUser));
+      setProfile((prev) => buildProfileView(updatedUser, prev?.stats?.reviews ?? reviews.length));
       setLoading(false);
     }
-  }, [location.state]);
+  }, [location.state, reviews.length]);
 
   useEffect(() => {
-    if (shouldSkipNextFetchRef.current) {
-      shouldSkipNextFetchRef.current = false;
-      return;
-    }
-
-    const loadProfile = async () => {
+    const loadPage = async () => {
       try {
-        const userData = await usersApi.getUser(id);
-        setProfile(buildProfileView(userData));
+        const [userData, userReviews] = await Promise.all([
+          usersApi.getUser(id),
+          reviewsApi.getUserReviews(id),
+        ]);
+        setReviews(userReviews);
+        setProfile(buildProfileView(userData, userReviews.length));
       } catch (loadError) {
         setError(loadError.message);
       } finally {
@@ -81,12 +123,21 @@ export default function Profile() {
       }
     };
 
-    if (id) {
-      loadProfile();
+    if (!id) {
+      return;
     }
+
+    if (shouldSkipNextFetchRef.current) {
+      shouldSkipNextFetchRef.current = false;
+      loadReviews().catch(() => {});
+      return;
+    }
+
+    loadPage();
   }, [id]);
 
   const isOwner = currentUser && profile && String(currentUser.id) === String(id);
+  const isAdmin = Boolean(currentUser?.isAdmin || currentUser?.is_admin);
 
   const handlePasswordChange = (event) => {
     const { name, value } = event.target;
@@ -134,6 +185,68 @@ export default function Profile() {
       setVerificationError(submitError.message.replaceAll('"', ''));
     } finally {
       setVerificationSaving(false);
+    }
+  };
+
+  const handleReviewChange = (event) => {
+    const { name, value } = event.target;
+    setReviewForm((prev) => ({
+      ...prev,
+      [name]: name === 'score' ? Number(value) : value,
+    }));
+  };
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!currentUser?.id || !id) {
+      return;
+    }
+
+    setReviewSaving(true);
+    setReviewError('');
+    setReviewSuccess('');
+    try {
+      await reviewsApi.createReview({
+        reviewer_id: currentUser.id,
+        reviewed_id: id,
+        score: Number(reviewForm.score),
+        comment: reviewForm.comment.trim() || null,
+      });
+
+      const nextReviews = await loadReviews();
+      await loadProfile(nextReviews.length);
+      setReviewForm({ score: 5, comment: '' });
+      setReviewSuccess('Отзыв сохранён.');
+    } catch (submitError) {
+      setReviewError(submitError.message.replaceAll('"', ''));
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const confirmed = window.confirm('Удалить этот отзыв?');
+    if (!confirmed) {
+      return;
+    }
+
+    setReviewError('');
+    setReviewSuccess('');
+    setDeletingReviewId(reviewId);
+    try {
+      await adminApi.deleteReview(reviewId);
+      const nextReviews = await loadReviews();
+      await loadProfile(nextReviews.length);
+      setReviewSuccess('Отзыв удалён.');
+    } catch (actionError) {
+      setReviewError(actionError.message.replaceAll('"', ''));
+    } finally {
+      setDeletingReviewId(null);
     }
   };
 
@@ -353,9 +466,74 @@ export default function Profile() {
               <span className="card-title">Отзывы</span>
             </div>
             <div className="card-body">
-              <div style={{ padding: '1rem', textAlign: 'center', color: '#9a939e' }}>
-                Пока нет отзывов
-              </div>
+              {!isOwner && currentUser && (
+                <form className="review-form" onSubmit={handleReviewSubmit}>
+                  <div className="review-form-row">
+                    <label className="profile-password-label" htmlFor="review-score">Оценка</label>
+                    <select
+                      id="review-score"
+                      name="score"
+                      value={reviewForm.score}
+                      onChange={handleReviewChange}
+                      className="review-select"
+                    >
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <option key={value} value={value}>
+                          {value} / 5
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="review-form-row">
+                    <label className="profile-password-label" htmlFor="review-comment">Комментарий</label>
+                    <textarea
+                      id="review-comment"
+                      name="comment"
+                      value={reviewForm.comment}
+                      onChange={handleReviewChange}
+                      className="review-textarea"
+                      placeholder="Напиши короткий отзыв о человеке"
+                      rows={4}
+                    />
+                  </div>
+                  {reviewError && <div className="profile-password-error">{reviewError}</div>}
+                  {reviewSuccess && <div className="profile-password-success">{reviewSuccess}</div>}
+                  <button type="submit" disabled={reviewSaving} className="profile-password-submit">
+                    {reviewSaving ? 'Сохраняем...' : 'Оставить отзыв'}
+                  </button>
+                </form>
+              )}
+
+              {reviews.length > 0 ? (
+                <div className="review-list">
+                  {reviews.map((review) => (
+                    <article key={review.id} className="review-item">
+                      <div className="review-head">
+                        <div>
+                          <div className="review-author">{review.reviewer_name || 'Пользователь'}</div>
+                          <div className="review-date">{formatReviewDate(review.created_at)}</div>
+                        </div>
+                        <div className="review-head-actions">
+                          <div className="review-score">{Number(review.score).toFixed(1)}</div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              className="review-delete"
+                              disabled={deletingReviewId === review.id}
+                              onClick={() => handleDeleteReview(review.id)}
+                            >
+                              {deletingReviewId === review.id ? 'Удаление...' : 'Удалить'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {review.comment && <p className="review-comment">{review.comment}</p>}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="review-empty">Пока нет отзывов</div>
+              )}
             </div>
           </div>
         </div>
@@ -365,7 +543,11 @@ export default function Profile() {
             <div className="stat-row">
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.rating}</div>
-                <div className="stat-label">совместимость</div>
+                <div className="stat-label">рейтинг</div>
+              </div>
+              <div className="stat-pill">
+                <div className="stat-num">{profile.stats.reviews}</div>
+                <div className="stat-label">отзывы</div>
               </div>
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.helped}</div>

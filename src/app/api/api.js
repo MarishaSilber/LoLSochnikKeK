@@ -167,6 +167,12 @@ export const adminApi = {
       method: 'DELETE',
     });
   },
+
+  deleteReview(reviewId) {
+    return request(`/api/v1/admin/reviews/${reviewId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 export const usersApi = {
@@ -188,6 +194,19 @@ export const usersApi = {
   deleteUser(id) {
     return request(`/api/v1/users/${id}`, {
       method: 'DELETE',
+    });
+  },
+};
+
+export const reviewsApi = {
+  getUserReviews(userId) {
+    return request(`/api/v1/users/${userId}/reviews`);
+  },
+
+  createReview(review) {
+    return request('/api/v1/reviews/', {
+      method: 'POST',
+      body: JSON.stringify(review),
     });
   },
 };
