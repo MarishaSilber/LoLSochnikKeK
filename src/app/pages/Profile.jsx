@@ -137,18 +137,18 @@ export default function Profile() {
     loadPage();
   }, [id]);
 
-  const isOwner = currentUser && profile && String(currentUser.id) === String(id);
-  const isAdmin = Boolean(currentUser?.isAdmin || currentUser?.is_admin);
-  const REVIEWS_PER_PAGE = 10;
-  const totalReviewPages = Math.max(1, Math.ceil(reviews.length / REVIEWS_PER_PAGE));
-  const paginatedReviews = reviews.slice(
-    (reviewPage - 1) * REVIEWS_PER_PAGE,
-    reviewPage * REVIEWS_PER_PAGE,
-  );
-
   useEffect(() => {
     setReviewPage(1);
   }, [id]);
+
+  const isOwner = currentUser && profile && String(currentUser.id) === String(id);
+  const isAdmin = Boolean(currentUser?.isAdmin || currentUser?.is_admin);
+  const reviewsPerPage = 10;
+  const totalReviewPages = Math.max(1, Math.ceil(reviews.length / reviewsPerPage));
+  const paginatedReviews = reviews.slice(
+    (reviewPage - 1) * reviewsPerPage,
+    reviewPage * reviewsPerPage,
+  );
 
   useEffect(() => {
     if (reviewPage > totalReviewPages) {
@@ -260,7 +260,7 @@ export default function Profile() {
       await adminApi.deleteReview(reviewId);
       const nextReviews = await loadReviews();
       await loadProfile(nextReviews.length);
-      setReviewPage((current) => Math.min(current, Math.max(1, Math.ceil(nextReviews.length / REVIEWS_PER_PAGE))));
+      setReviewPage((current) => Math.min(current, Math.max(1, Math.ceil(nextReviews.length / reviewsPerPage))));
       setReviewSuccess('Отзыв удалён.');
     } catch (actionError) {
       setReviewError(actionError.message.replaceAll('"', ''));
@@ -471,7 +471,7 @@ export default function Profile() {
         )}
 
         <div className="column-center">
-          <div className="card card-reviews">
+          <div className="card">
             <div className="card-header">
               <span className="card-title">О себе</span>
             </div>
@@ -480,7 +480,7 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="card">
+          <div className="card card-reviews">
             <div className="card-header">
               <span className="card-title">Отзывы</span>
             </div>
@@ -491,7 +491,7 @@ export default function Profile() {
                     <article key={review.id} className="review-item">
                       <div className="review-head">
                         <div>
-                          <div className="review-author">{review.reviewer_name || 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ'}</div>
+                          <div className="review-author">{review.reviewer_name || 'Пользователь'}</div>
                           <div className="review-date">{formatReviewDate(review.created_at)}</div>
                         </div>
                         <div className="review-head-actions">
@@ -503,7 +503,7 @@ export default function Profile() {
                               disabled={deletingReviewId === review.id}
                               onClick={() => handleDeleteReview(review.id)}
                             >
-                              {deletingReviewId === review.id ? 'РЈРґР°Р»РµРЅРёРµ...' : 'РЈРґР°Р»РёС‚СЊ'}
+                              {deletingReviewId === review.id ? 'Удаление...' : 'Удалить'}
                             </button>
                           )}
                         </div>
@@ -513,7 +513,7 @@ export default function Profile() {
                   ))}
                 </div>
               ) : (
-                <div className="review-empty">РџРѕРєР° РЅРµС‚ РѕС‚Р·С‹РІРѕРІ</div>
+                <div className="review-empty">Пока нет отзывов</div>
               )}
 
               {reviews.length > 0 && totalReviewPages > 1 && (
@@ -576,37 +576,6 @@ export default function Profile() {
                     {reviewSaving ? 'Сохраняем...' : 'Оставить отзыв'}
                   </button>
                 </form>
-              )}
-
-              {reviews.length > 0 ? (
-                <div className="review-list">
-                  {reviews.map((review) => (
-                    <article key={review.id} className="review-item">
-                      <div className="review-head">
-                        <div>
-                          <div className="review-author">{review.reviewer_name || 'Пользователь'}</div>
-                          <div className="review-date">{formatReviewDate(review.created_at)}</div>
-                        </div>
-                        <div className="review-head-actions">
-                          <div className="review-score">{Number(review.score).toFixed(1)}</div>
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              className="review-delete"
-                              disabled={deletingReviewId === review.id}
-                              onClick={() => handleDeleteReview(review.id)}
-                            >
-                              {deletingReviewId === review.id ? 'Удаление...' : 'Удалить'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {review.comment && <p className="review-comment">{review.comment}</p>}
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="review-empty">Пока нет отзывов</div>
               )}
             </div>
           </div>
