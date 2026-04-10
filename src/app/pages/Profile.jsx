@@ -64,6 +64,7 @@ export default function Profile() {
   const [deletingReviewId, setDeletingReviewId] = useState(null);
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
+  const [reviewPage, setReviewPage] = useState(1);
   const [reviewForm, setReviewForm] = useState({
     score: 5,
     comment: '',
@@ -138,6 +139,22 @@ export default function Profile() {
 
   const isOwner = currentUser && profile && String(currentUser.id) === String(id);
   const isAdmin = Boolean(currentUser?.isAdmin || currentUser?.is_admin);
+  const REVIEWS_PER_PAGE = 10;
+  const totalReviewPages = Math.max(1, Math.ceil(reviews.length / REVIEWS_PER_PAGE));
+  const paginatedReviews = reviews.slice(
+    (reviewPage - 1) * REVIEWS_PER_PAGE,
+    reviewPage * REVIEWS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setReviewPage(1);
+  }, [id]);
+
+  useEffect(() => {
+    if (reviewPage > totalReviewPages) {
+      setReviewPage(totalReviewPages);
+    }
+  }, [reviewPage, totalReviewPages]);
 
   const handlePasswordChange = (event) => {
     const { name, value } = event.target;
@@ -216,6 +233,7 @@ export default function Profile() {
 
       const nextReviews = await loadReviews();
       await loadProfile(nextReviews.length);
+      setReviewPage(1);
       setReviewForm({ score: 5, comment: '' });
       setReviewSuccess('Отзыв сохранён.');
     } catch (submitError) {
@@ -242,6 +260,7 @@ export default function Profile() {
       await adminApi.deleteReview(reviewId);
       const nextReviews = await loadReviews();
       await loadProfile(nextReviews.length);
+      setReviewPage((current) => Math.min(current, Math.max(1, Math.ceil(nextReviews.length / REVIEWS_PER_PAGE))));
       setReviewSuccess('Отзыв удалён.');
     } catch (actionError) {
       setReviewError(actionError.message.replaceAll('"', ''));
@@ -468,7 +487,7 @@ export default function Profile() {
             <div className="card-body">
               {reviews.length > 0 ? (
                 <div className="review-list">
-                  {reviews.map((review) => (
+                  {paginatedReviews.map((review) => (
                     <article key={review.id} className="review-item">
                       <div className="review-head">
                         <div>
@@ -495,6 +514,30 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="review-empty">РџРѕРєР° РЅРµС‚ РѕС‚Р·С‹РІРѕРІ</div>
+              )}
+
+              {reviews.length > 0 && totalReviewPages > 1 && (
+                <div className="review-pagination">
+                  <button
+                    type="button"
+                    className="review-page-button"
+                    disabled={reviewPage === 1}
+                    onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
+                  >
+                    Назад
+                  </button>
+                  <div className="review-page-indicator">
+                    {reviewPage} / {totalReviewPages}
+                  </div>
+                  <button
+                    type="button"
+                    className="review-page-button"
+                    disabled={reviewPage === totalReviewPages}
+                    onClick={() => setReviewPage((page) => Math.min(totalReviewPages, page + 1))}
+                  >
+                    Вперёд
+                  </button>
+                </div>
               )}
 
               {!isOwner && currentUser && (

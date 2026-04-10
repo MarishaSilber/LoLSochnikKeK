@@ -544,6 +544,38 @@
   display: none;
 }
 
+.review-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.review-page-button {
+  min-width: 92px;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--deep);
+  font-family: 'TTW', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.review-page-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.review-page-indicator {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .review-item {
   padding: 14px 16px;
   border: 1px solid var(--border);
