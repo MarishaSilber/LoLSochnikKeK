@@ -207,6 +207,7 @@
   gap: 1.25rem;
   padding: 1.5rem 0 3rem;
   width: 100%;
+  align-items: start;
 }
 
 .main-owner {
@@ -219,6 +220,8 @@
 .column-right {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  align-self: start;
 }
 
 .card {
@@ -226,6 +229,14 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.profile-page .card {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  cursor: default;
+  align-self: stretch;
 }
 
 .card-reviews {
@@ -546,11 +557,6 @@
   flex-direction: column;
   gap: 12px;
   margin-bottom: 1rem;
-}
-
-.review-form-compact + .review-list,
-.review-form-compact + .review-empty {
-  display: none;
 }
 
 .review-pagination {

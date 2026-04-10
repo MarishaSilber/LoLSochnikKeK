@@ -49,11 +49,13 @@ export default function Profile() {
   const location = useLocation();
   const { id } = useParams();
   const shouldSkipNextFetchRef = useRef(Boolean(location.state?.updatedUser));
+
   const [profile, setProfile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
@@ -65,6 +67,7 @@ export default function Profile() {
   const [reviewError, setReviewError] = useState('');
   const [reviewSuccess, setReviewSuccess] = useState('');
   const [reviewPage, setReviewPage] = useState(1);
+
   const [reviewForm, setReviewForm] = useState({
     score: 5,
     comment: '',
@@ -174,7 +177,9 @@ export default function Profile() {
     setPasswordSaving(true);
     try {
       await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      setPasswordSuccess('Мы отправили письмо на вашу почту. Новый пароль применится после перехода по ссылке из письма.');
+      setPasswordSuccess(
+        'Мы отправили письмо на вашу почту. Новый пароль применится после перехода по ссылке из письма.',
+      );
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
@@ -260,7 +265,9 @@ export default function Profile() {
       await adminApi.deleteReview(reviewId);
       const nextReviews = await loadReviews();
       await loadProfile(nextReviews.length);
-      setReviewPage((current) => Math.min(current, Math.max(1, Math.ceil(nextReviews.length / reviewsPerPage))));
+      setReviewPage((current) =>
+        Math.min(current, Math.max(1, Math.ceil(nextReviews.length / reviewsPerPage))),
+      );
       setReviewSuccess('Отзыв удалён.');
     } catch (actionError) {
       setReviewError(actionError.message.replaceAll('"', ''));
@@ -374,10 +381,13 @@ export default function Profile() {
                 {!currentUser?.isEmailVerified && (
                   <div className="profile-password-form" style={{ marginBottom: '1.25rem' }}>
                     <div className="profile-password-copy">
-                      Почта ещё не подтверждена. Вы можете пользоваться сайтом, а для смены пароля сначала подтвердите email.
+                      Почта ещё не подтверждена. Вы можете пользоваться сайтом, а для смены
+                      пароля сначала подтвердите email.
                     </div>
                     {verificationError && <div className="profile-password-error">{verificationError}</div>}
-                    {verificationSuccess && <div className="profile-password-success">{verificationSuccess}</div>}
+                    {verificationSuccess && (
+                      <div className="profile-password-success">{verificationSuccess}</div>
+                    )}
                     <button
                       type="button"
                       disabled={verificationSaving}
@@ -388,6 +398,7 @@ export default function Profile() {
                     </button>
                   </div>
                 )}
+
                 <form onSubmit={handlePasswordSubmit} className="profile-password-form">
                   <div className="profile-password-copy">
                     Здесь можно сменить пароль от аккаунта.
@@ -457,11 +468,7 @@ export default function Profile() {
                   </div>
                   {passwordError && <div className="profile-password-error">{passwordError}</div>}
                   {passwordSuccess && <div className="profile-password-success">{passwordSuccess}</div>}
-                  <button
-                    type="submit"
-                    disabled={passwordSaving}
-                    className="profile-password-submit"
-                  >
+                  <button type="submit" disabled={passwordSaving} className="profile-password-submit">
                     {passwordSaving ? 'Обновление...' : 'Обновить пароль'}
                   </button>
                 </form>
@@ -491,7 +498,9 @@ export default function Profile() {
                     <article key={review.id} className="review-item">
                       <div className="review-head">
                         <div>
-                          <div className="review-author">{review.reviewer_name || 'Пользователь'}</div>
+                          <div className="review-author">
+                            {review.reviewer_name || 'Пользователь'}
+                          </div>
                           <div className="review-date">{formatReviewDate(review.created_at)}</div>
                         </div>
                         <div className="review-head-actions">
@@ -543,7 +552,9 @@ export default function Profile() {
               {!isOwner && currentUser && (
                 <form className="review-form review-form-compact" onSubmit={handleReviewSubmit}>
                   <div className="review-form-row">
-                    <label className="profile-password-label" htmlFor="review-score">Оценка</label>
+                    <label className="profile-password-label" htmlFor="review-score">
+                      Оценка
+                    </label>
                     <select
                       id="review-score"
                       name="score"
@@ -559,7 +570,9 @@ export default function Profile() {
                     </select>
                   </div>
                   <div className="review-form-row">
-                    <label className="profile-password-label" htmlFor="review-comment">Комментарий</label>
+                    <label className="profile-password-label" htmlFor="review-comment">
+                      Комментарий
+                    </label>
                     <textarea
                       id="review-comment"
                       name="comment"
