@@ -17,6 +17,7 @@ from .database import get_db
 ACCESS_TOKEN_TTL_SECONDS = int(os.getenv("ACCESS_TOKEN_TTL_SECONDS", str(60 * 60 * 24)))
 SECRET_KEY = os.getenv("SECRET_KEY")
 TOKEN_NAMESPACE = "vuzhub-access-token"
+EMAIL_TOKEN_NAMESPACE = "vuzhub-email-action"
 
 
 def ensure_secret_key() -> None:
@@ -36,6 +37,23 @@ def verify_password(password: str, stored_hash: Optional[str]) -> bool:
     salt, expected_hash = stored_hash.split("$", 1)
     password_hash = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100_000).hex()
     return hmac.compare_digest(password_hash, expected_hash)
+
+
+def generate_one_time_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_one_time_token(token: str) -> str:
+    digest = hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        f"{EMAIL_TOKEN_NAMESPACE}.{token}".encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return digest
+
+
+def verify_one_time_token(token: str, token_hash: str) -> bool:
+    return hmac.compare_digest(hash_one_time_token(token), token_hash)
 
 
 def _sign(payload: dict) -> str:

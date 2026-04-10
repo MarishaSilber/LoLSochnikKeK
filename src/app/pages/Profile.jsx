@@ -1,14 +1,38 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { authApi, usersApi } from '../api/api';
 import './Profile.css';
 import logo from '../../assets/sochnik.png';
-import { getCurrentUser, setCurrentUser as persistCurrentUser } from '../utils/session';
+import { getCurrentUser } from '../utils/session';
 import { formatCourseLabel, getInitials, mapUserToCard } from '../utils/users';
+
+function buildProfileView(userData) {
+  const mappedUser = mapUserToCard(userData);
+
+  return {
+    id: mappedUser.id,
+    name: mappedUser.name,
+    course: formatCourseLabel(mappedUser.course),
+    faculty: mappedUser.faculty,
+    location: mappedUser.location,
+    hours: 'Пн-Пт, 13:00-18:00',
+    telegram: mappedUser.telegram || '@не_указан',
+    stats: {
+      reviews: 0,
+      rating: mappedUser.trustScore ? mappedUser.trustScore.toFixed(1) : '5.0',
+      helped: mappedUser.helpedCount,
+      responseTime: '~1ч',
+    },
+    bio: mappedUser.bio,
+    tags: mappedUser.tags,
+  };
+}
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
+  const shouldSkipNextFetchRef = useRef(Boolean(location.state?.updatedUser));
   const [profile, setProfile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,6 +40,9 @@ export default function Profile() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+  const [verificationSuccess, setVerificationSuccess] = useState('');
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -30,28 +57,23 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
+    const updatedUser = location.state?.updatedUser;
+    if (updatedUser) {
+      setProfile(buildProfileView(updatedUser));
+      setLoading(false);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (shouldSkipNextFetchRef.current) {
+      shouldSkipNextFetchRef.current = false;
+      return;
+    }
+
     const loadProfile = async () => {
       try {
         const userData = await usersApi.getUser(id);
-        const mappedUser = mapUserToCard(userData);
-
-        setProfile({
-          id: mappedUser.id,
-          name: mappedUser.name,
-          course: formatCourseLabel(mappedUser.course),
-          faculty: mappedUser.faculty,
-          location: mappedUser.location,
-          hours: 'Пн-Пт, 13:00-18:00',
-          telegram: mappedUser.telegram || '@не_указан',
-          stats: {
-            reviews: 0,
-            rating: mappedUser.trustScore ? mappedUser.trustScore.toFixed(1) : '5.0',
-            helped: mappedUser.helpedCount,
-            responseTime: '~1ч',
-          },
-          bio: mappedUser.bio,
-          tags: mappedUser.tags,
-        });
+        setProfile(buildProfileView(userData));
       } catch (loadError) {
         setError(loadError.message);
       } finally {
@@ -84,13 +106,7 @@ export default function Profile() {
     setPasswordSaving(true);
     try {
       await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      const storedUser = getCurrentUser();
-      if (storedUser) {
-        const nextUser = { ...storedUser, mustChangePassword: false };
-        persistCurrentUser(nextUser);
-        setCurrentUser(nextUser);
-      }
-      setPasswordSuccess('Пароль обновлён.');
+      setPasswordSuccess('Мы отправили письмо на вашу почту. Новый пароль применится после перехода по ссылке из письма.');
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
@@ -100,6 +116,24 @@ export default function Profile() {
       setPasswordError(submitError.message.replaceAll('"', ''));
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!currentUser?.email || currentUser?.isEmailVerified) {
+      return;
+    }
+
+    setVerificationSaving(true);
+    setVerificationError('');
+    setVerificationSuccess('');
+    try {
+      const response = await authApi.resendVerification(currentUser.email);
+      setVerificationSuccess(response.message || 'Мы отправили новое письмо с подтверждением.');
+    } catch (submitError) {
+      setVerificationError(submitError.message.replaceAll('"', ''));
+    } finally {
+      setVerificationSaving(false);
     }
   };
 
@@ -205,6 +239,23 @@ export default function Profile() {
                 <span className="card-title">Безопасность</span>
               </div>
               <div className="card-body">
+                {!currentUser?.isEmailVerified && (
+                  <div className="profile-password-form" style={{ marginBottom: '1.25rem' }}>
+                    <div className="profile-password-copy">
+                      Почта ещё не подтверждена. Вы можете пользоваться сайтом, а для смены пароля сначала подтвердите email.
+                    </div>
+                    {verificationError && <div className="profile-password-error">{verificationError}</div>}
+                    {verificationSuccess && <div className="profile-password-success">{verificationSuccess}</div>}
+                    <button
+                      type="button"
+                      disabled={verificationSaving}
+                      className="profile-password-submit"
+                      onClick={handleResendVerification}
+                    >
+                      {verificationSaving ? 'Отправляем...' : 'Отправить письмо для подтверждения'}
+                    </button>
+                  </div>
+                )}
                 <form onSubmit={handlePasswordSubmit} className="profile-password-form">
                   <div className="profile-password-copy">
                     Здесь можно сменить пароль от аккаунта.

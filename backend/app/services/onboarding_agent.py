@@ -69,6 +69,7 @@ SKIP_PHRASES = {
 }
 
 SLOTS = ["basic", "department", "location", "help", "telegram"]
+REQUIRED_SLOTS = {"basic"}
 
 TAG_RULES = [
     ("ВышМат", ["матан", "диффур", "термех", "линал", "тензор"]),
@@ -161,6 +162,13 @@ def extract_full_name(text: str) -> Optional[str]:
     return None
 
 
+def has_full_name(value: Optional[str]) -> bool:
+    if not value:
+        return False
+    parts = [part for part in re.split(r"\s+", value.strip()) if part]
+    return len(parts) >= 2
+
+
 def extract_course(text: str) -> Optional[int]:
     match = re.search(r"\b([1-6])\s*(?:курс|курсе|курса)?\b", text.lower())
     if match:
@@ -250,7 +258,7 @@ def heuristic_extract_profile_data(chat_history: List[Dict[str, str]]) -> dict:
 
 def is_slot_filled(slot: str, data: dict) -> bool:
     if slot == "basic":
-        return bool(data.get("full_name") and data.get("course"))
+        return bool(has_full_name(data.get("full_name")) and data.get("course"))
     if slot == "department":
         return bool(data.get("department"))
     if slot == "location":
@@ -309,6 +317,9 @@ def follow_up_question_for_slot(slot: str) -> str:
 
 def update_state_from_message(state: dict, slot: str, message_text: str, data: dict) -> None:
     if is_skip_message(message_text):
+        if slot in REQUIRED_SLOTS:
+            state["follow_up_count"][slot] = state["follow_up_count"].get(slot, 0) + 1
+            return
         if slot not in state["skipped_slots"]:
             state["skipped_slots"].append(slot)
         state["follow_up_count"][slot] = 0
@@ -330,6 +341,10 @@ def build_deterministic_response(chat_history: List[Dict[str, str]], interview_s
 
     if user_messages:
         update_state_from_message(state, current_slot, last_user_message, data)
+
+    if user_messages and is_skip_message(last_user_message) and current_slot in REQUIRED_SLOTS:
+        state["current_slot"] = current_slot
+        return "Имя, фамилию и курс пропускать нельзя. Напиши их в формате вроде «Иван Петров, 2 курс»."
 
     current_slot = next_unfilled_slot(data, state)
     if current_slot is None:

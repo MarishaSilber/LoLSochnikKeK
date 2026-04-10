@@ -20,6 +20,19 @@ def smart_search(db: Session, query: SearchQuery) -> List[User]:
     return base_query.order_by(User.trust_score.desc(), User.last_active.desc()).limit(query.limit).all()
 
 def update_search_vector(db: Session, user: User):
+    if not user.id:
+        return
+
     if user.bio_raw or user.tags_array:
-        user.search_vector = func.to_tsvector("russian", user.bio_raw or "").op("||")(func.to_tsvector("russian", " ".join(user.tags_array or [])))
-        db.commit()
+        search_vector = func.to_tsvector("russian", user.bio_raw or "").op("||")(
+            func.to_tsvector("russian", " ".join(user.tags_array or []))
+        )
+    else:
+        search_vector = None
+
+    db.query(User).filter(User.id == user.id).update(
+        {User.search_vector: search_vector},
+        synchronize_session=False,
+    )
+    db.commit()
+    db.refresh(user)

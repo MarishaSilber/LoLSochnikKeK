@@ -1,6 +1,8 @@
 import os
+import json
+import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
@@ -15,13 +17,14 @@ from sqlalchemy.orm import Session
 
 from . import models
 from .database import get_db
-from .rate_limit import enforce_rate_limit
+from .rate_limit import clear_rate_limit_bucket, enforce_failed_attempt_limit, enforce_rate_limit, register_failed_attempt
 from .schemas import (
     AdminAuditLogResponse,
     AdminRoleUpdateRequest,
     AdminUserResponse,
     AdminVisibilityUpdateRequest,
     AuthLoginRequest,
+    AuthPendingResponse,
     AuthRegisterRequest,
     AuthResponse,
     ChangePasswordRequest,
@@ -31,6 +34,8 @@ from .schemas import (
     ConversationDetailResponse,
     ConversationSummaryResponse,
     EmbeddingUpdate,
+    EmailVerificationRequest,
+    ResendVerificationRequest,
     ReviewCreate,
     ReviewResponse,
     SearchQuery,
@@ -44,11 +49,17 @@ from .security import (
     ensure_secret_key,
     get_current_user,
     get_optional_current_user,
+    generate_one_time_token,
+    hash_one_time_token,
     hash_password,
     issue_access_token,
     require_admin,
     require_password_change_completed,
     verify_password,
+)
+from .services.email_service import (
+    send_password_change_confirmation_email,
+    send_registration_verification_email,
 )
 from .services.onboarding_agent import extract_profile_data, get_interviewer_response
 from .test_users import seed_test_users
@@ -61,6 +72,9 @@ TERMS_VERSION = os.getenv("TERMS_VERSION", "2026-04-09")
 PRIVACY_POLICY_VERSION = os.getenv("PRIVACY_POLICY_VERSION", "2026-04-09")
 BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL")
 BOOTSTRAP_ADMIN_PASSWORD = os.getenv("BOOTSTRAP_ADMIN_PASSWORD")
+REGISTER_VERIFICATION_TTL_SECONDS = int(os.getenv("REGISTER_VERIFICATION_TTL_SECONDS", str(60 * 60 * 24)))
+PASSWORD_CHANGE_CONFIRM_TTL_SECONDS = int(os.getenv("PASSWORD_CHANGE_CONFIRM_TTL_SECONDS", str(60 * 15)))
+logger = logging.getLogger(__name__)
 
 
 def bootstrap_security_configuration() -> None:
@@ -119,6 +133,17 @@ def get_session(session_id: str) -> Dict[str, object]:
     return session
 
 
+def should_persist_onboarding_answer(previous_slot: str, updated_state: Dict[str, object]) -> bool:
+    next_slot = updated_state.get("current_slot")
+    skipped_slots = set(updated_state.get("skipped_slots", []))
+
+    if previous_slot in skipped_slots:
+        return False
+    if previous_slot == "done":
+        return False
+    return next_slot != previous_slot
+
+
 def build_auth_response(user: models.User) -> AuthResponse:
     return AuthResponse(
         id=user.id,
@@ -127,8 +152,84 @@ def build_auth_response(user: models.User) -> AuthResponse:
         is_profile_complete=bool(user.is_profile_complete),
         is_admin=bool(user.is_admin),
         must_change_password=bool(user.must_change_password),
+        is_email_verified=bool(user.is_email_verified),
         access_token=issue_access_token(user),
     )
+
+
+def create_email_action_token(
+    db: Session,
+    *,
+    action: str,
+    email: str,
+    user_id: Optional[UUID] = None,
+    payload: Optional[dict] = None,
+    ttl_seconds: int,
+) -> str:
+    now = datetime.now(timezone.utc)
+    token = generate_one_time_token()
+    token_hash = hash_one_time_token(token)
+    db.query(models.EmailActionToken).filter(
+        models.EmailActionToken.email == email,
+        models.EmailActionToken.action == action,
+        models.EmailActionToken.used_at.is_(None),
+    ).update({"used_at": now}, synchronize_session=False)
+    db.add(
+        models.EmailActionToken(
+            user_id=user_id,
+            email=email,
+            action=action,
+            token_hash=token_hash,
+            payload_json=json.dumps(payload) if payload else None,
+            expires_at=now + timedelta(seconds=ttl_seconds),
+        )
+    )
+    db.flush()
+    return token
+
+
+def get_active_email_action_token(db: Session, action: str, token: str) -> models.EmailActionToken:
+    token_hash = hash_one_time_token(token)
+    token_row = db.query(models.EmailActionToken).filter(
+        models.EmailActionToken.token_hash == token_hash,
+        models.EmailActionToken.action == action,
+    ).first()
+    if not token_row:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    if token_row.used_at is not None:
+        raise HTTPException(status_code=400, detail="Token has already been used")
+    if token_row.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Token has expired")
+    return token_row
+
+
+def send_registration_verification(db: Session, user: models.User) -> None:
+    try:
+        token = create_email_action_token(
+            db,
+            action="register_verify",
+            email=user.email,
+            user_id=user.id,
+            ttl_seconds=REGISTER_VERIFICATION_TTL_SECONDS,
+        )
+        send_registration_verification_email(user.email, token)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def send_password_change_confirmation(db: Session, user: models.User, new_password_hash: str) -> None:
+    try:
+        token = create_email_action_token(
+            db,
+            action="password_change_confirm",
+            email=user.email,
+            user_id=user.id,
+            payload={"new_password_hash": new_password_hash},
+            ttl_seconds=PASSWORD_CHANGE_CONFIRM_TTL_SECONDS,
+        )
+        send_password_change_confirmation_email(user.email, token)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 def write_admin_audit_log(
@@ -181,8 +282,12 @@ def ensure_default_admin() -> None:
             if not admin_user.password_hash:
                 admin_user.password_hash = hash_password(BOOTSTRAP_ADMIN_PASSWORD)
                 changed = True
-            if not admin_user.must_change_password:
-                admin_user.must_change_password = True
+            if admin_user.must_change_password:
+                admin_user.must_change_password = False
+                changed = True
+            if not admin_user.is_email_verified:
+                admin_user.is_email_verified = True
+                admin_user.email_verified_at = admin_user.email_verified_at or datetime.now(timezone.utc)
                 changed = True
             if changed:
                 db.commit()
@@ -195,7 +300,9 @@ def ensure_default_admin() -> None:
             course=1,
             is_mentor=False,
             is_admin=True,
-            must_change_password=True,
+            must_change_password=False,
+            is_email_verified=True,
+            email_verified_at=datetime.now(timezone.utc),
             is_profile_complete=False,
             tags_array=[],
         )
@@ -398,19 +505,22 @@ def build_conversation_summary(db: Session, current_user: models.User, conversat
 
 @api_router.post("/auth/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register_account(payload: AuthRegisterRequest, request: Request, db: Session = Depends(get_db)):
-    enforce_rate_limit(request, "auth-register")
+    enforce_failed_attempt_limit(request, "auth-register-fail")
 
     if not payload.accepted_terms or not payload.accepted_privacy_policy:
+        register_failed_attempt(request, "auth-register-fail")
         raise HTTPException(status_code=400, detail="You must accept the terms and privacy policy")
 
     existing_user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
     if existing_user:
+        register_failed_attempt(request, "auth-register-fail")
         raise HTTPException(status_code=400, detail="Account with this email already exists")
 
     now = datetime.now(timezone.utc)
     user = models.User(
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
+        is_email_verified=False,
         full_name="Новый пользователь",
         course=1,
         is_mentor=False,
@@ -425,16 +535,25 @@ def register_account(payload: AuthRegisterRequest, request: Request, db: Session
     db.commit()
     db.refresh(user)
     ensure_support_conversation(db, user.id)
+    try:
+        send_registration_verification(db, user)
+        db.commit()
+    except HTTPException as exc:
+        logger.warning("Registration verification email was not sent for %s: %s", user.email, exc.detail)
+        db.rollback()
+    clear_rate_limit_bucket(request, "auth-register-fail")
     return build_auth_response(user)
 
 
 @api_router.post("/auth/login", response_model=AuthResponse)
 def login_account(payload: AuthLoginRequest, request: Request, db: Session = Depends(get_db)):
-    enforce_rate_limit(request, "auth-login")
+    enforce_failed_attempt_limit(request, "auth-login-fail")
 
     user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
     if not user or not verify_password(payload.password, user.password_hash):
+        register_failed_attempt(request, "auth-login-fail")
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    clear_rate_limit_bucket(request, "auth-login-fail")
     return build_auth_response(user)
 
 
@@ -445,8 +564,45 @@ def get_me(current_user: models.User = Depends(get_current_user), db: Session = 
     return build_auth_response(current_user)
 
 
-@api_router.post("/auth/change-password")
-def change_password(
+@api_router.post("/auth/verify-email", response_model=AuthResponse)
+def verify_email(payload: EmailVerificationRequest, db: Session = Depends(get_db)):
+    token_row = get_active_email_action_token(db, "register_verify", payload.token)
+    user = db.query(models.User).filter(models.User.id == token_row.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now = datetime.now(timezone.utc)
+    user.is_email_verified = True
+    user.email_verified_at = now
+    token_row.used_at = now
+    db.commit()
+    db.refresh(user)
+    return build_auth_response(user)
+
+
+@api_router.post("/auth/resend-verification", response_model=AuthPendingResponse)
+def resend_verification_email(payload: ResendVerificationRequest, request: Request, db: Session = Depends(get_db)):
+    enforce_rate_limit(request, "auth-resend-verification")
+    normalized_email = payload.email.lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
+    if user and not user.is_email_verified:
+        try:
+            send_registration_verification(db, user)
+        except RuntimeError:
+            raise HTTPException(
+                status_code=503,
+                detail="Не удалось отправить письмо подтверждения. Попробуйте позже.",
+            )
+        db.commit()
+    return AuthPendingResponse(
+        status="verification_required",
+        message="Если аккаунт существует и почта ещё не подтверждена, мы отправили новое письмо",
+        email=normalized_email,
+    )
+
+
+@api_router.post("/auth/change-password/request")
+def request_password_change(
     payload: ChangePasswordRequest,
     request: Request,
     current_user: models.User = Depends(get_current_user),
@@ -458,9 +614,29 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     if payload.current_password == payload.new_password:
         raise HTTPException(status_code=400, detail="New password must be different")
+    if not current_user.is_email_verified:
+        raise HTTPException(status_code=403, detail="Verify your email before changing the password")
 
-    current_user.password_hash = hash_password(payload.new_password)
-    current_user.must_change_password = False
+    send_password_change_confirmation(db, current_user, hash_password(payload.new_password))
+    db.commit()
+    return {"status": "confirmation_sent"}
+
+
+@api_router.post("/auth/change-password/confirm")
+def confirm_password_change(payload: EmailVerificationRequest, db: Session = Depends(get_db)):
+    token_row = get_active_email_action_token(db, "password_change_confirm", payload.token)
+    user = db.query(models.User).filter(models.User.id == token_row.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    token_payload = json.loads(token_row.payload_json or "{}")
+    new_password_hash = token_payload.get("new_password_hash")
+    if not new_password_hash:
+        raise HTTPException(status_code=400, detail="Token payload is invalid")
+
+    token_row.used_at = datetime.now(timezone.utc)
+    user.password_hash = new_password_hash
+    user.must_change_password = False
     db.commit()
     return {"status": "ok"}
 
@@ -893,8 +1069,14 @@ def update_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     payload = user_update.model_dump(exclude_unset=True)
-    if "email" in payload and payload["email"]:
-        payload["email"] = payload["email"].lower()
+    if "email" in payload:
+        new_email = (payload.get("email") or "").lower().strip()
+        if new_email and new_email != (user.email or "").lower():
+            raise HTTPException(status_code=400, detail="Email cannot be changed directly. Use email verification flow.")
+        payload.pop("email", None)
+    if "telegram_username" in payload:
+        telegram_username = (payload.get("telegram_username") or "").strip()
+        payload["telegram_username"] = telegram_username or None
     if not current_user.is_admin:
         payload.pop("is_profile_complete", None)
         payload.pop("is_mentor", None)
@@ -1017,6 +1199,7 @@ async def onboarding_start(
     onboarding_sessions[session_id] = {
         "user_id": str(current_user.id),
         "history": [],
+        "accepted_history": [],
         "state": {
             "current_slot": "basic",
             "follow_up_count": {},
@@ -1057,7 +1240,9 @@ async def onboarding_chat(
         raise HTTPException(status_code=403, detail="This onboarding session belongs to another user")
 
     history = session["history"]
+    accepted_history = session["accepted_history"]
     interview_state = session["state"]
+    previous_slot = interview_state.get("current_slot", "basic")
     history.append({"role": "user", "content": payload.text})
 
     try:
@@ -1066,7 +1251,10 @@ async def onboarding_chat(
         cleaned_reply = reply.replace("[READY_TO_CONFIRM]", "").strip()
 
         history.append({"role": "assistant", "content": cleaned_reply})
-        extracted_data = await extract_profile_data(history)
+        if should_persist_onboarding_answer(previous_slot, interview_state):
+            accepted_history.append({"role": "user", "content": payload.text})
+            accepted_history.append({"role": "assistant", "content": cleaned_reply})
+        extracted_data = await extract_profile_data(accepted_history)
         return OnboardingChatResponse(
             reply=cleaned_reply,
             is_ready_to_confirm=is_ready_to_confirm,
@@ -1086,11 +1274,13 @@ async def onboarding_confirm(
     if session["user_id"] != str(current_user.id):
         raise HTTPException(status_code=403, detail="This onboarding session belongs to another user")
 
-    history = session["history"]
+    history = session["accepted_history"] or session["history"]
     interview_state = session["state"]
     extracted_data = await extract_profile_data(history)
-    if not extracted_data or not extracted_data.get("full_name"):
-        raise HTTPException(status_code=400, detail="Not enough data to create profile")
+    full_name = (extracted_data or {}).get("full_name") or ""
+    full_name_parts = [part for part in full_name.split() if part]
+    if not extracted_data or len(full_name_parts) < 2 or not extracted_data.get("course"):
+        raise HTTPException(status_code=400, detail="Имя, фамилия и курс обязательны для регистрации")
 
     user = db.query(models.User).filter(models.User.id == current_user.id).first()
     if not user:

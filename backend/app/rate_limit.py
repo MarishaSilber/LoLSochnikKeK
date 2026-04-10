@@ -7,8 +7,9 @@ from fastapi import HTTPException, Request, status
 
 
 RATE_LIMITS = {
-    "auth-login": (5, 60),
-    "auth-register": (3, 60),
+    "auth-login-fail": (20, 900),
+    "auth-register-fail": (20, 900),
+    "auth-resend-verification": (5, 300),
     "auth-change-password": (5, 300),
     "swagger": (10, 60),
     "onboarding-start": (10, 300),
@@ -36,3 +37,41 @@ def enforce_rate_limit(request: Request, bucket_name: str) -> None:
             )
 
         bucket.append(now)
+
+
+def enforce_failed_attempt_limit(request: Request, bucket_name: str) -> None:
+    limit, period = RATE_LIMITS[bucket_name]
+    bucket_key = (bucket_name, request.client.host if request.client else "unknown")
+    now = time.time()
+
+    with _bucket_lock:
+        bucket = _request_buckets[bucket_key]
+        while bucket and bucket[0] <= now - period:
+            bucket.popleft()
+
+        if len(bucket) >= limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed attempts, please try again later",
+            )
+
+
+def register_failed_attempt(request: Request, bucket_name: str) -> None:
+    limit, period = RATE_LIMITS[bucket_name]
+    bucket_key = (bucket_name, request.client.host if request.client else "unknown")
+    now = time.time()
+
+    with _bucket_lock:
+        bucket = _request_buckets[bucket_key]
+        while bucket and bucket[0] <= now - period:
+            bucket.popleft()
+
+        if len(bucket) < limit:
+            bucket.append(now)
+
+
+def clear_rate_limit_bucket(request: Request, bucket_name: str) -> None:
+    bucket_key = (bucket_name, request.client.host if request.client else "unknown")
+
+    with _bucket_lock:
+        _request_buckets.pop(bucket_key, None)

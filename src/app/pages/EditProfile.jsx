@@ -10,9 +10,13 @@ export default function EditProfile() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+  const [verificationSuccess, setVerificationSuccess] = useState('');
   const [formData, setFormData] = useState({
     full_name: '',
     telegram_username: '',
@@ -63,11 +67,24 @@ export default function EditProfile() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setSaveError('');
     setSaving(true);
 
     try {
-      await usersApi.updateUser(id, formData);
-      navigate(`/profile/${id}`);
+      const updatedUser = await usersApi.updateUser(id, formData);
+      const currentUser = getCurrentUser();
+
+      if (currentUser && String(currentUser.id) === String(id)) {
+        setCurrentUser({
+          ...currentUser,
+          full_name: updatedUser.full_name,
+          email: updatedUser.email ?? currentUser.email,
+        });
+      }
+
+      window.location.assign(`/profile/${id}`);
+    } catch (error) {
+      setSaveError(error.message.replaceAll('"', ''));
     } finally {
       setSaving(false);
     }
@@ -105,11 +122,7 @@ export default function EditProfile() {
     setPasswordSaving(true);
     try {
       await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      const currentUser = getCurrentUser();
-      if (currentUser) {
-        setCurrentUser({ ...currentUser, mustChangePassword: false });
-      }
-      setPasswordSuccess('Пароль обновлён.');
+      setPasswordSuccess('Мы отправили письмо на вашу почту. Новый пароль применится после перехода по ссылке из письма.');
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
@@ -119,6 +132,25 @@ export default function EditProfile() {
       setPasswordError(error.message.replaceAll('"', ''));
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const currentUser = getCurrentUser();
+    if (!currentUser?.email || currentUser?.isEmailVerified) {
+      return;
+    }
+
+    setVerificationSaving(true);
+    setVerificationError('');
+    setVerificationSuccess('');
+    try {
+      const response = await authApi.resendVerification(currentUser.email);
+      setVerificationSuccess(response.message || 'Мы отправили новое письмо с подтверждением.');
+    } catch (submitError) {
+      setVerificationError(submitError.message.replaceAll('"', ''));
+    } finally {
+      setVerificationSaving(false);
     }
   };
 
@@ -186,7 +218,7 @@ export default function EditProfile() {
               name="location_name"
               value={formData.location_name}
               onChange={handleChange}
-              placeholder="Например: НЛК, Г-корпус, Технопарк"
+              placeholder="Например: НЛК, Библиотека, Б-корпус"
               className="edit-profile-input"
             />
           </div>
@@ -210,6 +242,7 @@ export default function EditProfile() {
             />
           </div>
           <div className="edit-profile-actions">
+            {saveError && <div className="edit-profile-error">{saveError}</div>}
             <button
               type="submit"
               disabled={saving}
@@ -230,6 +263,23 @@ export default function EditProfile() {
         <form onSubmit={handlePasswordSubmit} className="edit-profile-password-card">
           <h2 className="edit-profile-password-title">Сменить пароль</h2>
           <div className="edit-profile-form">
+            {!getCurrentUser()?.isEmailVerified && (
+              <>
+                <div className="edit-profile-success" style={{ background: '#fff8db', color: '#8a5a00' }}>
+                  Почта ещё не подтверждена. Сайт доступен полностью, но смена пароля откроется только после подтверждения email.
+                </div>
+                {verificationError && <div className="edit-profile-error">{verificationError}</div>}
+                {verificationSuccess && <div className="edit-profile-success">{verificationSuccess}</div>}
+                <button
+                  type="button"
+                  disabled={verificationSaving}
+                  className="edit-profile-button edit-profile-button-secondary"
+                  onClick={handleResendVerification}
+                >
+                  {verificationSaving ? 'Отправляем...' : 'Отправить письмо для подтверждения'}
+                </button>
+              </>
+            )}
             <div>
               <label className="edit-profile-label">Текущий пароль</label>
               <div className="edit-profile-password-field">

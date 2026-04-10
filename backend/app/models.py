@@ -15,6 +15,8 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=True)
     must_change_password = Column(Boolean, default=False, server_default="false")
+    is_email_verified = Column(Boolean, default=False, server_default="false", nullable=False)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     full_name = Column(String(150), nullable=False, index=True, default="Новый пользователь")
     telegram_username = Column(String(50), unique=True, index=True, nullable=True)
     photo_path = Column(String(255), nullable=True)
@@ -39,6 +41,23 @@ class User(Base):
     reviews_given = relationship("Review", foreign_keys="Review.reviewer_id", back_populates="reviewer")
     reviews_received = relationship("Review", foreign_keys="Review.reviewed_id", back_populates="reviewed")
     admin_actions = relationship("AdminAuditLog", foreign_keys="AdminAuditLog.admin_id", back_populates="admin")
+    email_action_tokens = relationship("EmailActionToken", back_populates="user")
+
+
+class EmailActionToken(Base):
+    __tablename__ = "email_action_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    email = Column(String(255), nullable=False, index=True)
+    action = Column(String(32), nullable=False, index=True)
+    token_hash = Column(String(255), nullable=False, unique=True, index=True)
+    payload_json = Column(Text, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User", back_populates="email_action_tokens")
 
 
 class Review(Base):

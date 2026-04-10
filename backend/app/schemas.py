@@ -63,6 +63,20 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=128)
 
 
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=20, max_length=512)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class AuthPendingResponse(BaseModel):
+    status: str
+    message: str
+    email: EmailStr
+
+
 class AuthResponse(BaseModel):
     id: UUID
     email: EmailStr
@@ -70,15 +84,16 @@ class AuthResponse(BaseModel):
     is_profile_complete: bool
     is_admin: bool
     must_change_password: bool
+    is_email_verified: bool
     access_token: str
     token_type: str = "bearer"
 
 
 class AdminUserResponse(BaseModel):
     id: UUID
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     full_name: str
-    course: int
+    course: Optional[int] = None
     department: Optional[str] = None
     location_name: Optional[str] = None
     is_mentor: bool
@@ -86,7 +101,7 @@ class AdminUserResponse(BaseModel):
     is_admin: bool
     is_hidden: bool
     tags_array: Optional[List[str]] = []
-    last_active: datetime
+    last_active: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -104,10 +119,10 @@ class AdminAuditLogResponse(BaseModel):
     id: int
     admin_id: UUID
     admin_name: str
-    admin_email: Optional[EmailStr] = None
+    admin_email: Optional[str] = None
     target_user_id: Optional[UUID] = None
     target_user_name: Optional[str] = None
-    target_user_email: Optional[EmailStr] = None
+    target_user_email: Optional[str] = None
     action: str
     details: Optional[str] = None
     created_at: datetime
