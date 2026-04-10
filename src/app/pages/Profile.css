@@ -282,6 +282,7 @@
   font-weight: 300;
   color: #4a4450;
   line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .stat-row {
