@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { authApi, usersApi } from '../api/api';
-import { getCurrentUser } from '../utils/session';
+import { getCurrentUser, setCurrentUser } from '../utils/session';
 import { mapUserToCard } from '../utils/users';
 
 export default function EditProfile() {
@@ -69,8 +69,21 @@ export default function EditProfile() {
     setSaving(true);
 
     try {
-      await usersApi.updateUser(id, formData);
-      navigate(`/profile/${id}`);
+      const updatedUser = await usersApi.updateUser(id, formData);
+      const currentUser = getCurrentUser();
+
+      if (currentUser && String(currentUser.id) === String(id)) {
+        setCurrentUser({
+          ...currentUser,
+          full_name: updatedUser.full_name,
+          email: updatedUser.email ?? currentUser.email,
+        });
+      }
+
+      navigate(`/profile/${id}`, {
+        replace: true,
+        state: { updatedUser },
+      });
     } finally {
       setSaving(false);
     }
@@ -204,7 +217,7 @@ export default function EditProfile() {
               name="location_name"
               value={formData.location_name}
               onChange={handleChange}
-              placeholder="Например: НЛК, Г-корпус, Технопарк"
+              placeholder="Например: НЛК, Библиотека, Б-корпус"
               className="edit-profile-input"
             />
           </div>
