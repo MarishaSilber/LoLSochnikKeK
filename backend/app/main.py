@@ -1063,6 +1063,9 @@ def update_user(
         if new_email and new_email != (user.email or "").lower():
             raise HTTPException(status_code=400, detail="Email cannot be changed directly. Use email verification flow.")
         payload.pop("email", None)
+    if "telegram_username" in payload:
+        telegram_username = (payload.get("telegram_username") or "").strip()
+        payload["telegram_username"] = telegram_username or None
     if not current_user.is_admin:
         payload.pop("is_profile_complete", None)
         payload.pop("is_mentor", None)
