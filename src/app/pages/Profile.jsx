@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { authApi, usersApi } from '../api/api';
 import './Profile.css';
 import logo from '../../assets/sochnik.png';
-import { getCurrentUser, setCurrentUser as persistCurrentUser } from '../utils/session';
+import { getCurrentUser } from '../utils/session';
 import { formatCourseLabel, getInitials, mapUserToCard } from '../utils/users';
 
 export default function Profile() {
@@ -16,6 +16,9 @@ export default function Profile() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [verificationSaving, setVerificationSaving] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+  const [verificationSuccess, setVerificationSuccess] = useState('');
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -84,13 +87,7 @@ export default function Profile() {
     setPasswordSaving(true);
     try {
       await authApi.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      const storedUser = getCurrentUser();
-      if (storedUser) {
-        const nextUser = { ...storedUser, mustChangePassword: false };
-        persistCurrentUser(nextUser);
-        setCurrentUser(nextUser);
-      }
-      setPasswordSuccess('Пароль обновлён.');
+      setPasswordSuccess('Мы отправили письмо на вашу почту. Новый пароль применится после перехода по ссылке из письма.');
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
@@ -100,6 +97,24 @@ export default function Profile() {
       setPasswordError(submitError.message.replaceAll('"', ''));
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!currentUser?.email || currentUser?.isEmailVerified) {
+      return;
+    }
+
+    setVerificationSaving(true);
+    setVerificationError('');
+    setVerificationSuccess('');
+    try {
+      const response = await authApi.resendVerification(currentUser.email);
+      setVerificationSuccess(response.message || 'Мы отправили новое письмо с подтверждением.');
+    } catch (submitError) {
+      setVerificationError(submitError.message.replaceAll('"', ''));
+    } finally {
+      setVerificationSaving(false);
     }
   };
 
@@ -205,6 +220,23 @@ export default function Profile() {
                 <span className="card-title">Безопасность</span>
               </div>
               <div className="card-body">
+                {!currentUser?.isEmailVerified && (
+                  <div className="profile-password-form" style={{ marginBottom: '1.25rem' }}>
+                    <div className="profile-password-copy">
+                      Почта ещё не подтверждена. Вы можете пользоваться сайтом, а для смены пароля сначала подтвердите email.
+                    </div>
+                    {verificationError && <div className="profile-password-error">{verificationError}</div>}
+                    {verificationSuccess && <div className="profile-password-success">{verificationSuccess}</div>}
+                    <button
+                      type="button"
+                      disabled={verificationSaving}
+                      className="profile-password-submit"
+                      onClick={handleResendVerification}
+                    >
+                      {verificationSaving ? 'Отправляем...' : 'Отправить письмо для подтверждения'}
+                    </button>
+                  </div>
+                )}
                 <form onSubmit={handlePasswordSubmit} className="profile-password-form">
                   <div className="profile-password-copy">
                     Здесь можно сменить пароль от аккаунта.

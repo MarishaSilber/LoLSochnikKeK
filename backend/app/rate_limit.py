@@ -9,6 +9,7 @@ from fastapi import HTTPException, Request, status
 RATE_LIMITS = {
     "auth-login-fail": (20, 900),
     "auth-register-fail": (20, 900),
+    "auth-resend-verification": (5, 300),
     "auth-change-password": (5, 300),
     "swagger": (10, 60),
     "onboarding-start": (10, 300),

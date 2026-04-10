@@ -9,6 +9,8 @@ import NotFound from './pages/NotFound';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
 import AdminPanel from './pages/AdminPanel';
+import VerifyEmail from './pages/VerifyEmail';
+import ConfirmPasswordChange from './pages/ConfirmPasswordChange';
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +36,14 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: <AdminPanel />
+  },
+  {
+    path: '/verify-email',
+    element: <VerifyEmail />
+  },
+  {
+    path: '/confirm-password-change',
+    element: <ConfirmPasswordChange />
   },
   {
     path: '/profile/:id',

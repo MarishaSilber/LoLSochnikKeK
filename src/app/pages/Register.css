@@ -626,6 +626,33 @@
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.register-complete-actions .btn-primary,
+.register-search-cta {
+  border: 1px solid transparent;
+  background: var(--blush);
+  color: var(--white);
+  font-family: 'TTW', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(172, 118, 116, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.register-search-cta:hover {
+  transform: translateY(-1px);
+  background: #b77f7d;
+  box-shadow: 0 14px 28px rgba(172, 118, 116, 0.24);
+}
+
+.register-search-cta:active {
+  transform: translateY(0);
 }
 
 .register-error {

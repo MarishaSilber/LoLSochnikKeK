@@ -26,7 +26,18 @@ async function request(path, options = {}) {
     if (response.status === 401) {
       clearCurrentUser();
     }
-    const message = await response.text();
+    const rawMessage = await response.text();
+    let message = rawMessage;
+
+    try {
+      const parsed = JSON.parse(rawMessage);
+      if (typeof parsed?.detail === 'string') {
+        message = parsed.detail;
+      }
+    } catch {
+      // Keep the original text when the response is not JSON.
+    }
+
     throw new Error(message || `Request failed: ${response.status}`);
   }
 
@@ -62,12 +73,33 @@ export const authApi = {
   },
 
   changePassword(currentPassword, newPassword) {
-    return request('/api/v1/auth/change-password', {
+    return request('/api/v1/auth/change-password/request', {
       method: 'POST',
       body: JSON.stringify({
         current_password: currentPassword,
         new_password: newPassword,
       }),
+    });
+  },
+
+  verifyEmail(token) {
+    return request('/api/v1/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  resendVerification(email) {
+    return request('/api/v1/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  confirmPasswordChange(token) {
+    return request('/api/v1/auth/change-password/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
     });
   },
 };

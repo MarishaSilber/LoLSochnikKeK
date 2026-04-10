@@ -310,6 +310,7 @@ export default function Register({ initialAuthMode = 'register' }) {
         isProfileComplete: response.is_profile_complete,
         isAdmin: response.is_admin,
         mustChangePassword: response.must_change_password,
+        isEmailVerified: response.is_email_verified,
       };
 
       setAccessToken(response.access_token);
@@ -387,6 +388,7 @@ export default function Register({ initialAuthMode = 'register' }) {
         isProfileComplete: true,
         isAdmin: authUser?.isAdmin || false,
         mustChangePassword: false,
+        isEmailVerified: authUser?.isEmailVerified ?? true,
       };
       setCurrentUser(nextUser);
       window.location.href = `/profile/${userData.id}`;
@@ -515,7 +517,7 @@ export default function Register({ initialAuthMode = 'register' }) {
                         <button className="btn-primary" onClick={handleGoToProfile}>
                           Открыть профиль
                         </button>
-                        <button className="btn-ghost" onClick={() => navigate('/')}>
+                        <button className="register-search-cta" onClick={() => navigate('/')}>
                           Перейти к поиску
                         </button>
                       </div>

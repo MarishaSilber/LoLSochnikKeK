@@ -63,6 +63,20 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=128)
 
 
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=20, max_length=512)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class AuthPendingResponse(BaseModel):
+    status: str
+    message: str
+    email: EmailStr
+
+
 class AuthResponse(BaseModel):
     id: UUID
     email: EmailStr
@@ -70,6 +84,7 @@ class AuthResponse(BaseModel):
     is_profile_complete: bool
     is_admin: bool
     must_change_password: bool
+    is_email_verified: bool
     access_token: str
     token_type: str = "bearer"
 
