@@ -20,7 +20,6 @@ function buildProfileView(userData, reviewCount = 0) {
     stats: {
       reviews: reviewCount,
       rating: mappedUser.trustScore ? mappedUser.trustScore.toFixed(1) : '5.0',
-      helped: mappedUser.helpedCount,
       responseTime: '~1ч',
     },
     bio: mappedUser.bio,
@@ -604,10 +603,6 @@ export default function Profile() {
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.reviews}</div>
                 <div className="stat-label">отзывы</div>
-              </div>
-              <div className="stat-pill">
-                <div className="stat-num">{profile.stats.helped}</div>
-                <div className="stat-label">помог(ла)</div>
               </div>
               <div className="stat-pill">
                 <div className="stat-num">{profile.stats.responseTime}</div>
