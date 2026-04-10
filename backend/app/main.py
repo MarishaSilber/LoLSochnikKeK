@@ -133,6 +133,17 @@ def get_session(session_id: str) -> Dict[str, object]:
     return session
 
 
+def should_persist_onboarding_answer(previous_slot: str, updated_state: Dict[str, object]) -> bool:
+    next_slot = updated_state.get("current_slot")
+    skipped_slots = set(updated_state.get("skipped_slots", []))
+
+    if previous_slot in skipped_slots:
+        return False
+    if previous_slot == "done":
+        return False
+    return next_slot != previous_slot
+
+
 def build_auth_response(user: models.User) -> AuthResponse:
     return AuthResponse(
         id=user.id,
@@ -1188,6 +1199,7 @@ async def onboarding_start(
     onboarding_sessions[session_id] = {
         "user_id": str(current_user.id),
         "history": [],
+        "accepted_history": [],
         "state": {
             "current_slot": "basic",
             "follow_up_count": {},
@@ -1228,7 +1240,9 @@ async def onboarding_chat(
         raise HTTPException(status_code=403, detail="This onboarding session belongs to another user")
 
     history = session["history"]
+    accepted_history = session["accepted_history"]
     interview_state = session["state"]
+    previous_slot = interview_state.get("current_slot", "basic")
     history.append({"role": "user", "content": payload.text})
 
     try:
@@ -1237,7 +1251,10 @@ async def onboarding_chat(
         cleaned_reply = reply.replace("[READY_TO_CONFIRM]", "").strip()
 
         history.append({"role": "assistant", "content": cleaned_reply})
-        extracted_data = await extract_profile_data(history)
+        if should_persist_onboarding_answer(previous_slot, interview_state):
+            accepted_history.append({"role": "user", "content": payload.text})
+            accepted_history.append({"role": "assistant", "content": cleaned_reply})
+        extracted_data = await extract_profile_data(accepted_history)
         return OnboardingChatResponse(
             reply=cleaned_reply,
             is_ready_to_confirm=is_ready_to_confirm,
@@ -1257,7 +1274,7 @@ async def onboarding_confirm(
     if session["user_id"] != str(current_user.id):
         raise HTTPException(status_code=403, detail="This onboarding session belongs to another user")
 
-    history = session["history"]
+    history = session["accepted_history"] or session["history"]
     interview_state = session["state"]
     extracted_data = await extract_profile_data(history)
     full_name = (extracted_data or {}).get("full_name") or ""
