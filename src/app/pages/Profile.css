@@ -539,6 +539,11 @@
   margin-bottom: 1rem;
 }
 
+.review-form-compact + .review-list,
+.review-form-compact + .review-empty {
+  display: none;
+}
+
 .review-item {
   padding: 14px 16px;
   border: 1px solid var(--border);

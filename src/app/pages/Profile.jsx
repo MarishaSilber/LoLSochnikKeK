@@ -466,6 +466,37 @@ export default function Profile() {
               <span className="card-title">Отзывы</span>
             </div>
             <div className="card-body">
+              {reviews.length > 0 ? (
+                <div className="review-list">
+                  {reviews.map((review) => (
+                    <article key={review.id} className="review-item">
+                      <div className="review-head">
+                        <div>
+                          <div className="review-author">{review.reviewer_name || 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ'}</div>
+                          <div className="review-date">{formatReviewDate(review.created_at)}</div>
+                        </div>
+                        <div className="review-head-actions">
+                          <div className="review-score">{Number(review.score).toFixed(1)}</div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              className="review-delete"
+                              disabled={deletingReviewId === review.id}
+                              onClick={() => handleDeleteReview(review.id)}
+                            >
+                              {deletingReviewId === review.id ? 'РЈРґР°Р»РµРЅРёРµ...' : 'РЈРґР°Р»РёС‚СЊ'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {review.comment && <p className="review-comment">{review.comment}</p>}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="review-empty">РџРѕРєР° РЅРµС‚ РѕС‚Р·С‹РІРѕРІ</div>
+              )}
+
               {!isOwner && currentUser && (
                 <form className="review-form review-form-compact" onSubmit={handleReviewSubmit}>
                   <div className="review-form-row">
