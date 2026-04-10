@@ -69,7 +69,8 @@ export default function EditProfile() {
     setSaving(true);
 
     try {
-      const updatedUser = await usersApi.updateUser(id, formData);
+      await usersApi.updateUser(id, formData);
+      const updatedUser = await usersApi.getUser(id);
       const currentUser = getCurrentUser();
 
       if (currentUser && String(currentUser.id) === String(id)) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { authApi, usersApi } from '../api/api';
 import './Profile.css';
@@ -32,6 +32,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
+  const shouldSkipNextFetchRef = useRef(Boolean(location.state?.updatedUser));
   const [profile, setProfile] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,10 +60,16 @@ export default function Profile() {
     const updatedUser = location.state?.updatedUser;
     if (updatedUser) {
       setProfile(buildProfileView(updatedUser));
+      setLoading(false);
     }
   }, [location.state]);
 
   useEffect(() => {
+    if (shouldSkipNextFetchRef.current) {
+      shouldSkipNextFetchRef.current = false;
+      return;
+    }
+
     const loadProfile = async () => {
       try {
         const userData = await usersApi.getUser(id);
