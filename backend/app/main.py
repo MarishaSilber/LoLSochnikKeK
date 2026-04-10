@@ -1297,8 +1297,15 @@ async def onboarding_confirm(
         raise HTTPException(status_code=403, detail="This onboarding session belongs to another user")
 
     history = session["accepted_history"] or session["history"]
+    accepted_answers = session.get("accepted_answers", {})
     interview_state = session["state"]
     extracted_data = await extract_profile_data(history)
+    help_answer = accepted_answers.get("help")
+    if help_answer:
+        help_tags = extract_tags(help_answer)
+        extracted_data = extracted_data or {}
+        extracted_data["bio_raw"] = build_bio(help_answer, help_tags)
+        extracted_data["tags_array"] = help_tags
     full_name = (extracted_data or {}).get("full_name") or ""
     full_name_parts = [part for part in full_name.split() if part]
     if not extracted_data or len(full_name_parts) < 2 or not extracted_data.get("course"):
