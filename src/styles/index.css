@@ -772,7 +772,8 @@ nav {
 }
 
 .edit-profile-shell {
-  max-width: 500px;
+  width: min(620px, calc(100% - 2rem));
+  max-width: 620px;
   margin: 2rem auto;
   padding: 2rem;
 }
