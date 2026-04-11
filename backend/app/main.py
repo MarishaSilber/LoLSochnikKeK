@@ -28,6 +28,8 @@ from .schemas import (
     AuthRegisterRequest,
     AuthResponse,
     ChangePasswordRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
     ChatMessageCreate,
     ChatMessageResponse,
     ConversationArchiveRequest,
@@ -59,6 +61,7 @@ from .security import (
 )
 from .services.email_service import (
     send_password_change_confirmation_email,
+    send_password_reset_email,
     send_registration_verification_email,
 )
 from .services.onboarding_agent import (
@@ -83,6 +86,7 @@ BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL")
 BOOTSTRAP_ADMIN_PASSWORD = os.getenv("BOOTSTRAP_ADMIN_PASSWORD")
 REGISTER_VERIFICATION_TTL_SECONDS = int(os.getenv("REGISTER_VERIFICATION_TTL_SECONDS", str(60 * 60 * 24)))
 PASSWORD_CHANGE_CONFIRM_TTL_SECONDS = int(os.getenv("PASSWORD_CHANGE_CONFIRM_TTL_SECONDS", str(60 * 15)))
+PASSWORD_RESET_TTL_SECONDS = int(os.getenv("PASSWORD_RESET_TTL_SECONDS", str(60 * 30)))
 logger = logging.getLogger(__name__)
 
 
@@ -284,6 +288,20 @@ def send_password_change_confirmation(db: Session, user: models.User, new_passwo
             ttl_seconds=PASSWORD_CHANGE_CONFIRM_TTL_SECONDS,
         )
         send_password_change_confirmation_email(user.email, token)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def send_password_reset(db: Session, user: models.User) -> None:
+    try:
+        token = create_email_action_token(
+            db,
+            action="password_reset",
+            email=user.email,
+            user_id=user.id,
+            ttl_seconds=PASSWORD_RESET_TTL_SECONDS,
+        )
+        send_password_reset_email(user.email, token)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -657,6 +675,28 @@ def resend_verification_email(payload: ResendVerificationRequest, request: Reque
     )
 
 
+@api_router.post("/auth/password-reset/request", response_model=AuthPendingResponse)
+def request_password_reset(
+    payload: PasswordResetRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    enforce_rate_limit(request, "auth-password-reset")
+    normalized_email = payload.email.lower()
+    user = db.query(models.User).filter(func.lower(models.User.email) == normalized_email).first()
+    if user:
+        try:
+            send_password_reset(db, user)
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="Password reset email was not sent")
+        db.commit()
+    return AuthPendingResponse(
+        status="password_reset_sent",
+        message="Если аккаунт существует, мы отправили письмо для сброса пароля",
+        email=normalized_email,
+    )
+
+
 @api_router.post("/auth/change-password/request")
 def request_password_change(
     payload: ChangePasswordRequest,
@@ -692,6 +732,20 @@ def confirm_password_change(payload: EmailVerificationRequest, db: Session = Dep
 
     token_row.used_at = datetime.now(timezone.utc)
     user.password_hash = new_password_hash
+    user.must_change_password = False
+    db.commit()
+    return {"status": "ok"}
+
+
+@api_router.post("/auth/password-reset/confirm")
+def confirm_password_reset(payload: PasswordResetConfirmRequest, db: Session = Depends(get_db)):
+    token_row = get_active_email_action_token(db, "password_reset", payload.token)
+    user = db.query(models.User).filter(models.User.id == token_row.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    token_row.used_at = datetime.now(timezone.utc)
+    user.password_hash = hash_password(payload.new_password)
     user.must_change_password = False
     db.commit()
     return {"status": "ok"}

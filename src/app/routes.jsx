@@ -11,6 +11,8 @@ import TermsOfUse from './pages/TermsOfUse';
 import AdminPanel from './pages/AdminPanel';
 import VerifyEmail from './pages/VerifyEmail';
 import ConfirmPasswordChange from './pages/ConfirmPasswordChange';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 export const router = createBrowserRouter([
   {
@@ -44,6 +46,14 @@ export const router = createBrowserRouter([
   {
     path: '/confirm-password-change',
     element: <ConfirmPasswordChange />
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPassword />
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPassword />
   },
   {
     path: '/profile/:id',

@@ -96,3 +96,28 @@ def send_password_change_confirmation_email(to_email: str, token: str) -> None:
     </html>
     """
     send_email_message(to_email, subject, text_body, html_body)
+
+
+def send_password_reset_email(to_email: str, token: str) -> None:
+    reset_url = build_frontend_url(f"/reset-password?token={token}")
+    subject = "Сброс пароля в VuzHub"
+    text_body = (
+        "Здравствуйте!\n\n"
+        "Мы получили запрос на сброс пароля в VuzHub.\n"
+        "Чтобы задать новый пароль, перейдите по ссылке:\n"
+        f"{reset_url}\n\n"
+        "Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо."
+    )
+    html_body = f"""
+    <html>
+      <body>
+        <p>Здравствуйте!</p>
+        <p>Мы получили запрос на сброс пароля в VuzHub.</p>
+        <p><a href="{reset_url}">Сбросить пароль</a></p>
+        <p>Если кнопка не открывается, используйте ссылку:</p>
+        <p>{reset_url}</p>
+        <p>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
+      </body>
+    </html>
+    """
+    send_email_message(to_email, subject, text_body, html_body)

@@ -225,6 +225,23 @@
   cursor: not-allowed;
 }
 
+.register-auth-footer {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.register-auth-link {
+  font-size: 12px;
+  color: var(--lilac-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.register-auth-divider {
+  margin: 0 6px;
+  color: var(--muted);
+}
+
 .register-left-panel {
   background: var(--lilac-deep);
   padding: 2.5rem 1rem;

@@ -82,6 +82,20 @@ export const authApi = {
     });
   },
 
+  requestPasswordReset(email) {
+    return request('/api/v1/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  confirmPasswordReset(token, newPassword) {
+    return request('/api/v1/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+  },
+
   verifyEmail(token) {
     return request('/api/v1/auth/verify-email', {
       method: 'POST',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi, onboardingApi } from '../api/api';
 import './Register.css';
@@ -7,11 +7,11 @@ import { getCurrentUser, setAccessToken, setCurrentUser } from '../utils/session
 import SiteFooter from '../components/SiteFooter';
 
 const STEPS = [
-  { title: 'Знакомство', desc: 'Имя и курс' },
-  { title: 'Направление', desc: 'Кафедра или факультет' },
-  { title: 'Чем помогаешь', desc: 'Темы, опыт, компетенции' },
-  { title: 'Где найти', desc: 'Локация на кампусе' },
-  { title: 'Готово', desc: 'Публикация профиля' },
+  { title: 'Р—РЅР°РєРѕРјСЃС‚РІРѕ', desc: 'РРјСЏ Рё РєСѓСЂСЃ' },
+  { title: 'РќР°РїСЂР°РІР»РµРЅРёРµ', desc: 'РљР°С„РµРґСЂР° РёР»Рё С„Р°РєСѓР»СЊС‚РµС‚' },
+  { title: 'Р§РµРј РїРѕРјРѕРіР°РµС€СЊ', desc: 'РўРµРјС‹, РѕРїС‹С‚, РєРѕРјРїРµС‚РµРЅС†РёРё' },
+  { title: 'Р“РґРµ РЅР°Р№С‚Рё', desc: 'Р›РѕРєР°С†РёСЏ РЅР° РєР°РјРїСѓСЃРµ' },
+  { title: 'Р“РѕС‚РѕРІРѕ', desc: 'РџСѓР±Р»РёРєР°С†РёСЏ РїСЂРѕС„РёР»СЏ' },
 ];
 
 function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
@@ -24,22 +24,22 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
   const [acceptedPrivacyPolicy, setAcceptedPrivacyPolicy] = useState(false);
 
   const isRegisterMode = mode === 'register';
-  const submitLabel = isRegisterMode ? 'Создать аккаунт' : 'Войти';
-  const title = isRegisterMode ? 'Создание аккаунта' : 'Вход в аккаунт';
+  const submitLabel = isRegisterMode ? 'РЎРѕР·РґР°С‚СЊ Р°РєРєР°СѓРЅС‚' : 'Р’РѕР№С‚Рё';
+  const title = isRegisterMode ? 'РЎРѕР·РґР°РЅРёРµ Р°РєРєР°СѓРЅС‚Р°' : 'Р’С…РѕРґ РІ Р°РєРєР°СѓРЅС‚';
   const subtitle = isRegisterMode
-    ? 'Сначала создаём аккаунт, потом AI помогает собрать профиль.'
-    : 'Войди в существующий аккаунт и продолжи регистрацию или открой профиль.';
+    ? 'РЎРЅР°С‡Р°Р»Р° СЃРѕР·РґР°С‘Рј Р°РєРєР°СѓРЅС‚, РїРѕС‚РѕРј AI РїРѕРјРѕРіР°РµС‚ СЃРѕР±СЂР°С‚СЊ РїСЂРѕС„РёР»СЊ.'
+    : 'Р’РѕР№РґРё РІ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ Р°РєРєР°СѓРЅС‚ Рё РїСЂРѕРґРѕР»Р¶Рё СЂРµРіРёСЃС‚СЂР°С†РёСЋ РёР»Рё РѕС‚РєСЂРѕР№ РїСЂРѕС„РёР»СЊ.';
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (isRegisterMode && password !== confirmPassword) {
-      return onSubmit({ localError: 'Пароли не совпадают.' });
+      return onSubmit({ localError: 'РџР°СЂРѕР»Рё РЅРµ СЃРѕРІРїР°РґР°СЋС‚.' });
     }
 
     if (isRegisterMode && (!acceptedTerms || !acceptedPrivacyPolicy)) {
       return onSubmit({
-        localError: 'Нужно принять пользовательское соглашение и политику конфиденциальности.',
+        localError: 'РќСѓР¶РЅРѕ РїСЂРёРЅСЏС‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕРµ СЃРѕРіР»Р°С€РµРЅРёРµ Рё РїРѕР»РёС‚РёРєСѓ РєРѕРЅС„РёРґРµРЅС†РёР°Р»СЊРЅРѕСЃС‚Рё.',
       });
     }
 
@@ -55,7 +55,7 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
   return (
     <div className="register-auth-shell">
       <div className="register-auth-card">
-        <div className="register-auth-kicker">Аккаунт</div>
+        <div className="register-auth-kicker">РђРєРєР°СѓРЅС‚</div>
         <h1 className="register-auth-title">{title}</h1>
         <p className="register-auth-subtitle">{subtitle}</p>
 
@@ -65,20 +65,20 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
             className={`register-auth-tab ${isRegisterMode ? 'active' : ''}`}
             onClick={() => onSwitchMode('register')}
           >
-            Регистрация
+            Р РµРіРёСЃС‚СЂР°С†РёСЏ
           </button>
           <button
             type="button"
             className={`register-auth-tab ${!isRegisterMode ? 'active' : ''}`}
             onClick={() => onSwitchMode('login')}
           >
-            Вход
+            Р’С…РѕРґ
           </button>
         </div>
 
         <form className="register-auth-form" onSubmit={handleSubmit}>
           <label className="register-auth-label">
-            Почта
+            РџРѕС‡С‚Р°
             <input
               type="email"
               className="register-auth-input"
@@ -90,14 +90,14 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
           </label>
 
           <label className="register-auth-label">
-            Пароль
+            РџР°СЂРѕР»СЊ
             <div className="register-password-field">
               <input
                 type={showPassword ? 'text' : 'password'}
                 className="register-auth-input"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Не меньше 6 символов"
+                placeholder="РќРµ РјРµРЅСЊС€Рµ 6 СЃРёРјРІРѕР»РѕРІ"
                 minLength={6}
                 required
               />
@@ -106,7 +106,7 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
                 className="register-password-toggle"
                 onClick={() => setShowPassword((prev) => !prev)}
               >
-                {showPassword ? 'Скрыть' : 'Показать'}
+                {showPassword ? 'РЎРєСЂС‹С‚СЊ' : 'РџРѕРєР°Р·Р°С‚СЊ'}
               </button>
             </div>
           </label>
@@ -114,14 +114,14 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
           {isRegisterMode && (
             <>
               <label className="register-auth-label">
-                Подтверждение пароля
+                РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РїР°СЂРѕР»СЏ
                 <div className="register-password-field">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     className="register-auth-input"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Повтори пароль"
+                    placeholder="РџРѕРІС‚РѕСЂРё РїР°СЂРѕР»СЊ"
                     minLength={6}
                     required
                   />
@@ -130,7 +130,7 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
                     className="register-password-toggle"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
                   >
-                    {showConfirmPassword ? 'Скрыть' : 'Показать'}
+                    {showConfirmPassword ? 'РЎРєСЂС‹С‚СЊ' : 'РџРѕРєР°Р·Р°С‚СЊ'}
                   </button>
                 </div>
               </label>
@@ -143,9 +143,9 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
                     onChange={(event) => setAcceptedTerms(event.target.checked)}
                   />
                   <span>
-                    Я принимаю{' '}
+                    РЇ РїСЂРёРЅРёРјР°СЋ{' '}
                     <Link to="/terms" target="_blank" rel="noreferrer">
-                      пользовательское соглашение
+                      РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕРµ СЃРѕРіР»Р°С€РµРЅРёРµ
                     </Link>
                   </span>
                 </label>
@@ -157,9 +157,9 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
                     onChange={(event) => setAcceptedPrivacyPolicy(event.target.checked)}
                   />
                   <span>
-                    Я принимаю{' '}
+                    РЇ РїСЂРёРЅРёРјР°СЋ{' '}
                     <Link to="/privacy-policy" target="_blank" rel="noreferrer">
-                      политику конфиденциальности
+                      РїРѕР»РёС‚РёРєСѓ РєРѕРЅС„РёРґРµРЅС†РёР°Р»СЊРЅРѕСЃС‚Рё
                     </Link>
                   </span>
                 </label>
@@ -170,8 +170,15 @@ function AuthForm({ mode, onSwitchMode, onSubmit, isSubmitting, error }) {
           {error && <div className="register-auth-error">{error}</div>}
 
           <button type="submit" className="register-auth-submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Подождите...' : submitLabel}
+            {isSubmitting ? 'РџРѕРґРѕР¶РґРёС‚Рµ...' : submitLabel}
           </button>
+          {!isRegisterMode && (
+            <div className="register-auth-footer">
+              <Link className="register-auth-link" to="/forgot-password">
+                Забыли пароль?
+              </Link>
+            </div>
+          )}
         </form>
       </div>
     </div>
@@ -212,12 +219,12 @@ export default function Register({ initialAuthMode = 'register' }) {
         setMessages([
           {
             type: 'bot',
-            text: 'Привет! Я помогу заполнить твой профиль. Это займёт пару минут.\n\nНачнём с главного: как тебя зовут и на каком ты курсе?',
+            text: 'РџСЂРёРІРµС‚! РЇ РїРѕРјРѕРіСѓ Р·Р°РїРѕР»РЅРёС‚СЊ С‚РІРѕР№ РїСЂРѕС„РёР»СЊ. Р­С‚Рѕ Р·Р°Р№РјС‘С‚ РїР°СЂСѓ РјРёРЅСѓС‚.\n\nРќР°С‡РЅС‘Рј СЃ РіР»Р°РІРЅРѕРіРѕ: РєР°Рє С‚РµР±СЏ Р·РѕРІСѓС‚ Рё РЅР° РєР°РєРѕРј С‚С‹ РєСѓСЂСЃРµ?',
           },
         ]);
         setError('');
       } catch {
-        setError('Не удалось начать AI-регистрацию. Проверь backend и попробуй ещё раз.');
+        setError('РќРµ СѓРґР°Р»РѕСЃСЊ РЅР°С‡Р°С‚СЊ AI-СЂРµРіРёСЃС‚СЂР°С†РёСЋ. РџСЂРѕРІРµСЂСЊ backend Рё РїРѕРїСЂРѕР±СѓР№ РµС‰С‘ СЂР°Р·.');
       }
     };
 
@@ -229,7 +236,7 @@ export default function Register({ initialAuthMode = 'register' }) {
       typeof response?.reply === 'string'
         ? response.reply
         : response?.reply == null
-          ? 'Не удалось обработать ответ.'
+          ? 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±СЂР°Р±РѕС‚Р°С‚СЊ РѕС‚РІРµС‚.'
           : String(response.reply);
     const nextExtractedData =
       response?.extracted_data && typeof response.extracted_data === 'object' ? response.extracted_data : null;
@@ -271,9 +278,9 @@ export default function Register({ initialAuthMode = 'register' }) {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { type: 'bot', text: 'Произошла ошибка. Попробуй ещё раз.' },
+        { type: 'bot', text: 'РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР°. РџРѕРїСЂРѕР±СѓР№ РµС‰С‘ СЂР°Р·.' },
       ]);
-      setError('AI-регистрация сейчас недоступна.');
+      setError('AI-СЂРµРіРёСЃС‚СЂР°С†РёСЏ СЃРµР№С‡Р°СЃ РЅРµРґРѕСЃС‚СѓРїРЅР°.');
     } finally {
       setIsTyping(false);
     }
@@ -337,7 +344,7 @@ export default function Register({ initialAuthMode = 'register' }) {
     }
 
     if (!sessionId) {
-      setError('Сессия AI-регистрации ещё не готова. Подожди пару секунд и попробуй снова.');
+      setError('РЎРµСЃСЃРёСЏ AI-СЂРµРіРёСЃС‚СЂР°С†РёРё РµС‰С‘ РЅРµ РіРѕС‚РѕРІР°. РџРѕРґРѕР¶РґРё РїР°СЂСѓ СЃРµРєСѓРЅРґ Рё РїРѕРїСЂРѕР±СѓР№ СЃРЅРѕРІР°.');
       return;
     }
 
@@ -350,11 +357,11 @@ export default function Register({ initialAuthMode = 'register' }) {
     }
 
     if (currentStep === 0) {
-      setError('Имя, фамилию и курс пропустить нельзя.');
+      setError('РРјСЏ, С„Р°РјРёР»РёСЋ Рё РєСѓСЂСЃ РїСЂРѕРїСѓСЃС‚РёС‚СЊ РЅРµР»СЊР·СЏ.');
       return;
     }
 
-    await sendToOnboarding('__skip__', 'Пропустить');
+    await sendToOnboarding('__skip__', 'РџСЂРѕРїСѓСЃС‚РёС‚СЊ');
   };
 
   const handleKeyPress = (event) => {
@@ -365,7 +372,7 @@ export default function Register({ initialAuthMode = 'register' }) {
 
   const getInitials = (name) => {
     if (!name) {
-      return 'АК';
+      return 'РђРљ';
     }
     const parts = name.split(' ');
     return `${parts[0]?.[0] || ''}${parts[1]?.[0] || ''}`.toUpperCase();
@@ -375,7 +382,7 @@ export default function Register({ initialAuthMode = 'register' }) {
 
   const handleGoToProfile = async () => {
     if (!sessionId) {
-      setError('Нет активной сессии регистрации.');
+      setError('РќРµС‚ Р°РєС‚РёРІРЅРѕР№ СЃРµСЃСЃРёРё СЂРµРіРёСЃС‚СЂР°С†РёРё.');
       return;
     }
 
@@ -393,7 +400,7 @@ export default function Register({ initialAuthMode = 'register' }) {
       setCurrentUser(nextUser);
       window.location.href = `/profile/${userData.id}`;
     } catch {
-      setError('Не удалось сохранить профиль.');
+      setError('РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕС„РёР»СЊ.');
     }
   };
 
@@ -407,7 +414,7 @@ export default function Register({ initialAuthMode = 'register' }) {
           </div>
           <div className="register-nav-right">
             <button className="nav-back" onClick={() => navigate('/')}>
-              ← К поиску
+              в†ђ Рљ РїРѕРёСЃРєСѓ
             </button>
           </div>
         </nav>
@@ -432,7 +439,7 @@ export default function Register({ initialAuthMode = 'register' }) {
         </div>
         <div className="register-nav-right">
           <button className="nav-back" onClick={() => navigate('/')}>
-            ← К поиску
+            в†ђ Рљ РїРѕРёСЃРєСѓ
           </button>
           <div className="register-nav-hint">{authUser.email}</div>
         </div>
@@ -440,7 +447,7 @@ export default function Register({ initialAuthMode = 'register' }) {
 
       <div className="register-layout">
         <div className="register-left-panel">
-          <div className="register-left-label">Шаги регистрации</div>
+          <div className="register-left-label">РЁР°РіРё СЂРµРіРёСЃС‚СЂР°С†РёРё</div>
 
           <div className="register-step-list">
             {STEPS.map((step, index) => (
@@ -450,7 +457,7 @@ export default function Register({ initialAuthMode = 'register' }) {
                     index < currentStep ? 'done' : index === currentStep ? 'active' : 'idle'
                   }`}
                 >
-                  {index < currentStep ? '✓' : index + 1}
+                  {index < currentStep ? 'вњ“' : index + 1}
                 </div>
                 <div className="register-step-content">
                   <div className={`register-step-title ${index > currentStep ? 'idle' : ''}`}>
@@ -463,16 +470,16 @@ export default function Register({ initialAuthMode = 'register' }) {
           </div>
 
           <div className="register-preview-card">
-            <div className="register-preview-label">Предпросмотр профиля</div>
+            <div className="register-preview-label">РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ РїСЂРѕС„РёР»СЏ</div>
             <div className="register-preview-head">
               <div className="register-preview-avatar">{getInitials(extractedData?.full_name || authUser?.name)}</div>
               <div>
                 <div className="register-preview-name">
-                  {extractedData?.full_name || authUser?.name || 'Имя Фамилия'}
+                  {extractedData?.full_name || authUser?.name || 'РРјСЏ Р¤Р°РјРёР»РёСЏ'}
                 </div>
                 <div className="register-preview-sub">
-                  {extractedData?.department || 'Факультет'}
-                  {extractedData?.course && ` · ${extractedData.course} курс`}
+                  {extractedData?.department || 'Р¤Р°РєСѓР»СЊС‚РµС‚'}
+                  {extractedData?.course && ` В· ${extractedData.course} РєСѓСЂСЃ`}
                 </div>
               </div>
             </div>
@@ -494,7 +501,7 @@ export default function Register({ initialAuthMode = 'register' }) {
           <div className="register-chat-header">
             <div className="register-chat-header-title">{STEPS[currentStep]?.title}</div>
             <div className="register-chat-header-sub">
-              Шаг {currentStep + 1} из {STEPS.length} — AI заполнит профиль для твоего аккаунта
+              РЁР°Рі {currentStep + 1} РёР· {STEPS.length} вЂ” AI Р·Р°РїРѕР»РЅРёС‚ РїСЂРѕС„РёР»СЊ РґР»СЏ С‚РІРѕРµРіРѕ Р°РєРєР°СѓРЅС‚Р°
             </div>
           </div>
 
@@ -502,7 +509,7 @@ export default function Register({ initialAuthMode = 'register' }) {
             {messages.map((msg, index) => (
               <div key={index} className={`register-msg ${msg.type}`}>
                 <div className={`register-msg-avatar ${msg.type === 'bot' ? 'bot' : 'me'}`}>
-                  {msg.type === 'bot' ? '✦' : getInitials(extractedData?.full_name || authUser?.name)}
+                  {msg.type === 'bot' ? 'вњ¦' : getInitials(extractedData?.full_name || authUser?.name)}
                 </div>
                 <div>
                   <div className={`register-bubble ${msg.type}`}>
@@ -515,10 +522,10 @@ export default function Register({ initialAuthMode = 'register' }) {
                     {msg.showComplete && (
                       <div className="register-complete-actions">
                         <button className="btn-primary" onClick={handleGoToProfile}>
-                          Открыть профиль
+                          РћС‚РєСЂС‹С‚СЊ РїСЂРѕС„РёР»СЊ
                         </button>
                         <button className="register-search-cta" onClick={() => navigate('/')}>
-                          Перейти к поиску
+                          РџРµСЂРµР№С‚Рё Рє РїРѕРёСЃРєСѓ
                         </button>
                       </div>
                     )}
@@ -532,7 +539,7 @@ export default function Register({ initialAuthMode = 'register' }) {
 
             {isTyping && (
               <div className="register-msg">
-                <div className="register-msg-avatar bot">✦</div>
+                <div className="register-msg-avatar bot">вњ¦</div>
                 <div>
                   <div className="register-typing">
                     <span></span>
@@ -550,14 +557,14 @@ export default function Register({ initialAuthMode = 'register' }) {
               <div className="register-input-wrap">
                 <input
                   type="text"
-                  placeholder="Напиши что-нибудь..."
+                  placeholder="РќР°РїРёС€Рё С‡С‚Рѕ-РЅРёР±СѓРґСЊ..."
                   value={inputValue}
                   onChange={(event) => setInputValue(event.target.value)}
                   onKeyDown={handleKeyPress}
                   disabled={!sessionId || isTyping}
                 />
                 <button className="register-send-btn" onClick={handleSendMessage} disabled={isTyping || !sessionId}>
-                  Отправить
+                  РћС‚РїСЂР°РІРёС‚СЊ
                 </button>
               </div>
               <div className="register-secondary-actions">
@@ -566,13 +573,13 @@ export default function Register({ initialAuthMode = 'register' }) {
                   className="register-skip-btn"
                   onClick={handleSkipQuestion}
                   disabled={isTyping || currentStep === 0}
-                  title={currentStep === 0 ? 'Имя, фамилия и курс обязательны' : ''}
+                  title={currentStep === 0 ? 'РРјСЏ, С„Р°РјРёР»РёСЏ Рё РєСѓСЂСЃ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹' : ''}
                 >
-                  Пропустить вопрос
+                  РџСЂРѕРїСѓСЃС‚РёС‚СЊ РІРѕРїСЂРѕСЃ
                 </button>
               </div>
               <div className="register-input-hint">
-                Данные из этого диалога будут сохранены в твой текущий аккаунт
+                Р”Р°РЅРЅС‹Рµ РёР· СЌС‚РѕРіРѕ РґРёР°Р»РѕРіР° Р±СѓРґСѓС‚ СЃРѕС…СЂР°РЅРµРЅС‹ РІ С‚РІРѕР№ С‚РµРєСѓС‰РёР№ Р°РєРєР°СѓРЅС‚
               </div>
               {error && <div className="register-error">{error}</div>}
             </div>
@@ -583,3 +590,5 @@ export default function Register({ initialAuthMode = 'register' }) {
     </div>
   );
 }
+
+
